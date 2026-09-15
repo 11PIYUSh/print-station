@@ -1,6 +1,7 @@
 import os
 import json
 import socket
+import subprocess
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
@@ -15,13 +16,24 @@ CONFIG_FILE = 'settings.json'
 DEFAULT_CONFIG = {
     'upi_id': 'piyush@upi',
     'payee_name': 'Maruti Print Point',
-    'printer_ip': '192.168.1.15',
+    'printer_ip': '192.168.1.16',
     'printer_port': 9100,
     'rates': {
-        'plain_bw': 3.0,
-        'plain_color': 10.0,
-        'photo_glossy': 20.0,
-        'photo_matte': 25.0
+        'A4': 3.0,
+        'Letter': 3.0,
+        'Legal': 4.0,
+        'A5': 2.5,
+        'B5': 3.0,
+        '4x6': 15.0,
+        '5x7': 20.0,
+        '8x10': 35.0,
+        'L': 12.0,
+        '2L': 18.0,
+        'Square': 15.0,
+        'Hagaki': 10.0,
+        'Card': 8.0,
+        'color_addon': 7.0,
+        'photo_paper_addon': 10.0
     }
 }
 
@@ -32,7 +44,12 @@ def load_settings():
         return DEFAULT_CONFIG
     try:
         with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            # Ensure any new sizes exist in loaded config
+            for k, v in DEFAULT_CONFIG['rates'].items():
+                if k not in data.get('rates', {}):
+                    data.setdefault('rates', {})[k] = v
+            return data
     except Exception:
         return DEFAULT_CONFIG
 
@@ -54,15 +71,16 @@ def check_printer_socket(ip, port=9100, timeout=1.5):
     except Exception:
         return False
 
-def calculate_amount(media_type, color_mode, copies):
+def calculate_amount(paper_size, media_type, color_mode, copies):
     rates = SETTINGS.get('rates', DEFAULT_CONFIG['rates'])
-    if any(k in media_type for k in ['Glossy', 'Pro Luster', 'Semi-gloss']):
-        unit = rates.get('photo_glossy', 20.0)
-    elif any(k in media_type for k in ['Matte', 'High Resolution']):
-        unit = rates.get('photo_matte', 25.0)
-    else:
-        unit = rates.get('plain_color', 10.0) if color_mode == 'Color' else rates.get('plain_bw', 3.0)
-    return round(float(unit) * int(copies), 2)
+    base_rate = float(rates.get(paper_size, rates.get('A4', 3.0)))
+    
+    if color_mode == 'Color':
+        base_rate += float(rates.get('color_addon', 7.0))
+    if 'Photo' in media_type or 'Glossy' in media_type or 'Luster' in media_type:
+        base_rate += float(rates.get('photo_paper_addon', 10.0))
+        
+    return round(base_rate * int(copies), 2)
 
 @app.route('/')
 def customer_portal():
@@ -86,23 +104,52 @@ def update_admin_config():
     if 'upi_id' in data: SETTINGS['upi_id'] = data['upi_id'].strip()
     if 'payee_name' in data: SETTINGS['payee_name'] = data['payee_name'].strip()
     if 'printer_ip' in data: SETTINGS['printer_ip'] = data['printer_ip'].strip()
-    if 'printer_port' in data: SETTINGS['printer_port'] = int(data['printer_port'])
     if 'rates' in data: SETTINGS['rates'].update(data['rates'])
     save_settings(SETTINGS)
     return jsonify({'success': True, 'settings': SETTINGS})
 
 @app.route('/api/printer/status', methods=['GET'])
 def get_printer_status():
-    ip = SETTINGS.get('printer_ip', '192.168.1.15')
-    port_9100 = check_printer_socket(ip, 9100)
-    port_ipp = check_printer_socket(ip, 631)
-    status = 'Online (Ready)' if (port_9100 or port_ipp) else 'Offline'
+    ip = SETTINGS.get('printer_ip', '192.168.1.16')
+    p9100 = check_printer_socket(ip, 9100)
+    p631 = check_printer_socket(ip, 631)
+    status = 'Online' if (p9100 or p631) else 'Offline'
     return jsonify({
         'ip': ip,
-        'raw_port_9100': port_9100,
-        'ipp_port_631': port_ipp,
+        'raw_port_9100': p9100,
+        'ipp_port_631': p631,
         'status': status
     })
+
+@app.route('/api/printer/test_blank', methods=['POST'])
+def test_blank_page():
+    """Generates a blank printable canvas and sends it to the printer."""
+    ip = SETTINGS.get('printer_ip', '192.168.1.16')
+    test_path = os.path.join(app.config['UPLOAD_FOLDER'], 'blank_test.jpg')
+    
+    # Generate an A4 empty white image (1240 x 1754 px at 150 DPI) with a small test banner
+    img = Image.new('RGB', (1240, 1754), color=(255, 255, 255))
+    img.save(test_path, 'JPEG', quality=90)
+    
+    # Attempt printing via lp (CUPS) if installed, otherwise try IPP
+    try:
+        cmd = subprocess.run(['lp', '-d', 'Canon_G3010', test_path], capture_output=True, text=True)
+        if cmd.returncode == 0:
+            return jsonify({'success': True, 'method': 'CUPS (lp)', 'output': cmd.stdout})
+    except Exception:
+        pass
+
+    # Fallback direct socket command (Form Feed byte \x0c) to test paper ejection
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5.0)
+        sock.connect((ip, 9100))
+        # Send UEL (Universal Exit Language) and Form Feed to prompt blank page feed
+        sock.send(b"\x1b%-12345X@PJL\r\n@PJL ENTER LANGUAGE=PCL\r\n\x0c\x1b%-12345X")
+        sock.close()
+        return jsonify({'success': True, 'method': 'RAW Socket Form-Feed dispatched to 192.168.1.16'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/upload', methods=['POST'])
 def handle_upload():
@@ -124,7 +171,7 @@ def handle_upload():
     border = request.form.get('border', 'Bordered')
     color_mode = request.form.get('color_mode', 'Color')
 
-    total_price = calculate_amount(media_type, color_mode, copies)
+    total_price = calculate_amount(paper_size, media_type, color_mode, copies)
 
     job = {
         'id': job_counter,
@@ -138,8 +185,7 @@ def handle_upload():
         'total_price': total_price,
         'time': datetime.now().strftime('%d %b, %I:%M %p'),
         'payment_status': 'Pending Verification',
-        'print_status': 'Waiting',
-        'error_log': ''
+        'print_status': 'Waiting'
     }
     PRINT_JOBS.append(job)
     job_counter += 1
@@ -155,95 +201,38 @@ def get_single_job(job_id):
 def list_jobs():
     return jsonify(PRINT_JOBS)
 
-def send_ipp_print_request(printer_ip, file_path, doc_format="image/jpeg"):
-    """
-    Constructs an IPP 2.0 Print-Job binary frame to feed the Canon G3010
-    directly via standard network printing port 631.
-    """
-    import urllib.request
-    
-    with open(file_path, "rb") as f:
-        file_bytes = f.read()
-
-    # Minimal IPP 2.0 Print-Job Header
-    # Version: 2.0 (0x02, 0x00) | Operation: Print-Job (0x00, 0x02) | Request-ID: 1
-    ipp_req = bytearray([0x02, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01])
-    
-    # Operation attributes group tag (0x01)
-    ipp_req.append(0x01)
-
-    def append_attr(tag, name, val):
-        ipp_req.append(tag)
-        ipp_req.extend(len(name).to_bytes(2, 'big'))
-        ipp_req.extend(name.encode('utf-8'))
-        ipp_req.extend(len(val).to_bytes(2, 'big'))
-        ipp_req.extend(val.encode('utf-8'))
-
-    append_attr(0x47, "attributes-charset", "utf-8")
-    append_attr(0x48, "attributes-natural-language", "en")
-    append_attr(0x45, "printer-uri", f"ipp://{printer_ip}:631/ipp/print")
-    append_attr(0x49, "document-format", doc_format)
-
-    # End of attributes tag (0x03)
-    ipp_req.append(0x03)
-    ipp_req.extend(file_bytes)
-
-    # Dispatch over HTTP/IPP to port 631
-    url = f"http://{printer_ip}:631/ipp/print"
-    req = urllib.request.Request(url, data=bytes(ipp_req), headers={'Content-Type': 'application/ipp'})
-    
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return resp.status in (200, 201)
-
 @app.route('/api/jobs/verify_and_print/<int:job_id>', methods=['POST'])
 def verify_and_print(job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
-    if not target:
-        return jsonify({'error': 'Job not found'}), 404
+    if not target: return jsonify({'error': 'Job not found'}), 404
 
     target['payment_status'] = 'Paid'
-    target['print_status'] = 'Printing'
-
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], target['filename'])
-    ip = SETTINGS.get('printer_ip', '192.168.1.15')
 
-    # Convert uploaded image to JPEG for Canon rasterization
-    processed_path = file_path + "_canon.jpg"
+    # Try CUPS lp dispatcher first
     try:
-        with Image.open(file_path) as im:
-            if target['color_mode'] == 'Monochrome':
-                im = im.convert('L')
-            else:
-                im = im.convert('RGB')
-            im.save(processed_path, 'JPEG', quality=95)
-        print_target = processed_path
-    except Exception:
-        print_target = file_path
-
-    # Try IPP Port 631 first (Native Canon mobile protocol)
-    try:
-        success = send_ipp_print_request(ip, print_target, "image/jpeg")
-        if success:
+        res = subprocess.run(['lp', '-d', 'Canon_G3010', file_path], capture_output=True, text=True)
+        if res.returncode == 0:
             target['print_status'] = 'Completed'
-            return jsonify({'success': True, 'method': 'IPP Port 631'})
-    except Exception as ipp_err:
-        target['error_log'] = f"IPP 631 failed: {str(ipp_err)}. Attempting RAW 9100 stream..."
+            return jsonify({'success': True, 'method': 'CUPS'})
+    except Exception:
+        pass
 
-    # Fallback to Socket Stream on 9100
+    # Socket RAW dispatch fallback
+    ip = SETTINGS.get('printer_ip', '192.168.1.16')
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(5.0)
         sock.connect((ip, 9100))
-        with open(print_target, 'rb') as f:
+        with open(file_path, 'rb') as f:
             while chunk := f.read(4096):
                 sock.send(chunk)
         sock.close()
         target['print_status'] = 'Completed'
-        return jsonify({'success': True, 'method': 'Port 9100 RAW'})
-    except Exception as raw_err:
+        return jsonify({'success': True, 'method': 'RAW Socket'})
+    except Exception as e:
         target['print_status'] = 'Failed'
-        target['error_log'] += f" | RAW 9100 failed: {str(raw_err)}"
-        return jsonify({'success': False, 'error': target['error_log']}), 500
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
