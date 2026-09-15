@@ -16,10 +16,10 @@ DEFAULT_CONFIG = {
     'printer_ip': '192.168.1.15',
     'printer_port': 9100,
     'rates': {
-        'bw_a4': 3.0,
-        'color_a4': 10.0,
-        'photo_4x6': 15.0,
-        'photo_5x7': 25.0
+        'plain_bw': 3.0,
+        'plain_color': 10.0,
+        'photo_glossy': 20.0,
+        'photo_matte': 25.0
     }
 }
 
@@ -52,14 +52,14 @@ def check_printer_socket(ip, port=9100, timeout=1.5):
     except Exception:
         return False
 
-def calculate_amount(color_mode, paper_size, copies):
+def calculate_amount(media_type, color_mode, copies):
     rates = SETTINGS.get('rates', DEFAULT_CONFIG['rates'])
-    if paper_size == '4x6':
-        unit = rates.get('photo_4x6', 15.0)
-    elif paper_size == '5x7':
-        unit = rates.get('photo_5x7', 25.0)
+    if 'Glossy' in media_type or 'Pro Luster' in media_type or 'Semi-gloss' in media_type:
+        unit = rates.get('photo_glossy', 20.0)
+    elif 'Matte' in media_type or 'High Resolution' in media_type:
+        unit = rates.get('photo_matte', 25.0)
     else:
-        unit = rates.get('color_a4', 10.0) if color_mode == 'color' else rates.get('bw_a4', 3.0)
+        unit = rates.get('plain_color', 10.0) if color_mode == 'Color' else rates.get('plain_bw', 3.0)
     return round(float(unit) * int(copies), 2)
 
 @app.route('/')
@@ -82,16 +82,10 @@ def get_config():
 @app.route('/api/admin/config/update', methods=['POST'])
 def update_admin_config():
     data = request.json or {}
-    if 'upi_id' in data and data['upi_id'].strip():
-        SETTINGS['upi_id'] = data['upi_id'].strip()
-    if 'payee_name' in data and data['payee_name'].strip():
-        SETTINGS['payee_name'] = data['payee_name'].strip()
-    if 'printer_ip' in data and data['printer_ip'].strip():
-        SETTINGS['printer_ip'] = data['printer_ip'].strip()
-    if 'rates' in data:
-        for k in ['bw_a4', 'color_a4', 'photo_4x6', 'photo_5x7']:
-            if k in data['rates']:
-                SETTINGS['rates'][k] = float(data['rates'][k])
+    if 'upi_id' in data: SETTINGS['upi_id'] = data['upi_id'].strip()
+    if 'payee_name' in data: SETTINGS['payee_name'] = data['payee_name'].strip()
+    if 'printer_ip' in data: SETTINGS['printer_ip'] = data['printer_ip'].strip()
+    if 'rates' in data: SETTINGS['rates'].update(data['rates'])
     save_settings(SETTINGS)
     return jsonify({'success': True, 'settings': SETTINGS})
 
@@ -106,7 +100,7 @@ def get_printer_status():
 def handle_upload():
     global job_counter
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
+        return jsonify({'error': 'No file uploaded'}), 400
     file = request.files['file']
     if not file or file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
@@ -116,26 +110,38 @@ def handle_upload():
     save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
     file.save(save_path)
 
-    color_mode = request.form.get('color_mode', 'color')
-    paper_size = request.form.get('paper_size', 'A4')
     copies = int(request.form.get('copies', 1))
-    total_price = calculate_amount(color_mode, paper_size, copies)
+    paper_size = request.form.get('paper_size', 'A4')
+    media_type = request.form.get('media_type', 'Plain Paper')
+    border = request.form.get('border', 'Bordered')
+    color_mode = request.form.get('color_mode', 'Color')
+
+    total_price = calculate_amount(media_type, color_mode, copies)
 
     job = {
         'id': job_counter,
         'filename': unique_name,
         'original_name': filename,
-        'color_mode': color_mode,
-        'paper_size': paper_size,
         'copies': copies,
+        'paper_size': paper_size,
+        'media_type': media_type,
+        'border': border,
+        'color_mode': color_mode,
         'total_price': total_price,
         'time': datetime.now().strftime('%d %b, %I:%M %p'),
         'payment_status': 'Pending Verification',
-        'print_status': 'Queued'
+        'print_status': 'Waiting'
     }
     PRINT_JOBS.append(job)
     job_counter += 1
     return jsonify({'success': True, 'job': job})
+
+@app.route('/api/job/<int:job_id>', methods=['GET'])
+def get_single_job(job_id):
+    target = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
+    if not target:
+        return jsonify({'error': 'Job not found'}), 404
+    return jsonify(target)
 
 @app.route('/api/jobs', methods=['GET'])
 def list_jobs():
@@ -148,13 +154,15 @@ def verify_and_print(job_id):
         return jsonify({'error': 'Job not found'}), 404
 
     target['payment_status'] = 'Paid'
+    target['print_status'] = 'Printing'
+
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], target['filename'])
     ip = SETTINGS.get('printer_ip', '192.168.1.15')
     port = int(SETTINGS.get('printer_port', 9100))
 
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5.0)
+        sock.settimeout(6.0)
         sock.connect((ip, port))
         with open(file_path, 'rb') as f:
             chunk = f.read(4096)
@@ -162,8 +170,8 @@ def verify_and_print(job_id):
                 sock.send(chunk)
                 chunk = f.read(4096)
         sock.close()
-        target['print_status'] = 'Printed'
-        return jsonify({'success': True, 'message': 'Print dispatched'})
+        target['print_status'] = 'Completed'
+        return jsonify({'success': True, 'message': 'Print dispatched successfully'})
     except Exception as e:
         target['print_status'] = 'Failed'
         return jsonify({'success': False, 'error': str(e)}), 500

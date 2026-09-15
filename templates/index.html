@@ -3,87 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant Photo & Document Print</title>
+    <title>Canon Smart Print</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col items-center justify-center p-4">
-    <div class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-        <div class="text-center space-y-1">
-            <span class="inline-flex p-2.5 bg-blue-600/20 text-blue-400 rounded-2xl text-xl">🖨️</span>
-            <h1 class="text-xl font-bold text-white tracking-tight">Express Print Counter</h1>
-            <p class="text-xs text-slate-400">Upload or scan photo, configure details & settle payment</p>
+
+    <!-- Active Tracker Modal / Screen (When user has an active job) -->
+    <div id="trackerModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center space-y-6 shadow-2xl">
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-cyan-400" id="trackerOrderId">Order #0</span>
+                <h2 class="text-xl font-bold text-white mt-1">Print Progress</h2>
+            </div>
+
+            <!-- Visual Progress Dots -->
+            <div class="flex items-center justify-center gap-2">
+                <div id="step1" class="h-3 w-3 rounded-full bg-cyan-500 animate-ping"></div>
+                <div class="h-0.5 w-8 bg-slate-800" id="bar1"></div>
+                <div id="step2" class="h-3 w-3 rounded-full bg-slate-800"></div>
+                <div class="h-0.5 w-8 bg-slate-800" id="bar2"></div>
+                <div id="step3" class="h-3 w-3 rounded-full bg-slate-800"></div>
+            </div>
+
+            <div class="space-y-1">
+                <p id="trackerStatus" class="text-base font-bold text-white">Waiting for payment verification...</p>
+                <p id="trackerDesc" class="text-xs text-slate-400">Show payment confirmation on your phone to shop counter.</p>
+            </div>
+
+            <button type="button" id="closeTrackerBtn" class="hidden w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white rounded-xl transition">
+                Done / Print Another
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Client Print Setup Card -->
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
+        
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div>
+                <h1 class="text-lg font-bold text-white">Print Settings</h1>
+                <p class="text-xs text-slate-400">Canon Inkjet Print Station</p>
+            </div>
+            <span class="text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-cyan-400 font-semibold">G3010</span>
         </div>
 
-        <form id="customerForm" class="space-y-5">
-            <div class="grid grid-cols-2 gap-3">
-                <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-700 hover:border-blue-500 bg-slate-800/40 rounded-2xl cursor-pointer transition">
-                    <span class="text-lg">📁</span>
-                    <span class="text-xs font-semibold text-slate-300 mt-1">Gallery Image</span>
-                    <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg" class="hidden">
+        <form id="canonForm" class="space-y-4">
+            
+            <!-- Document Source Buttons -->
+            <div class="grid grid-cols-2 gap-2.5">
+                <label class="flex items-center justify-center gap-2 p-3 border border-slate-700 bg-slate-800/60 rounded-xl cursor-pointer hover:border-cyan-500 transition text-xs font-semibold">
+                    <span>📁 Image File</span>
+                    <input type="file" id="fileInput" accept="image/*" class="hidden">
                 </label>
-                <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-700 hover:border-blue-500 bg-slate-800/40 rounded-2xl cursor-pointer transition">
-                    <span class="text-lg">📷</span>
-                    <span class="text-xs font-semibold text-slate-300 mt-1">Scan Document</span>
+                <label class="flex items-center justify-center gap-2 p-3 border border-slate-700 bg-slate-800/60 rounded-xl cursor-pointer hover:border-cyan-500 transition text-xs font-semibold">
+                    <span>📷 Scan / Camera</span>
                     <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
                 </label>
             </div>
 
-            <div id="previewCard" class="hidden p-3 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <img id="previewImg" class="h-10 w-10 rounded-lg object-cover border border-slate-600">
+            <!-- Preview Thumbnail -->
+            <div id="previewCard" class="hidden p-2.5 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <img id="previewImg" class="h-9 w-9 rounded-lg object-cover border border-slate-600">
                     <span id="fileName" class="text-xs font-medium text-slate-200 truncate max-w-[170px]"></span>
                 </div>
-                <button type="button" id="removeFile" class="text-xs font-semibold text-rose-400 hover:text-rose-300">Remove</button>
+                <button type="button" id="removeFile" class="text-xs font-semibold text-rose-400">Remove</button>
             </div>
 
-            <div class="grid grid-cols-3 gap-3">
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Color Mode</label>
-                    <select id="colorMode" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none">
-                        <option value="color">Full Color</option>
-                        <option value="bw">Black & White</option>
+            <!-- Canon Print Options List -->
+            <div class="divide-y divide-slate-800 border border-slate-800 rounded-2xl bg-slate-900/50 overflow-hidden text-xs">
+                
+                <!-- Copies -->
+                <div class="p-3 flex items-center justify-between">
+                    <span class="font-semibold text-slate-300">Copies</span>
+                    <input type="number" id="copies" min="1" max="50" value="1" class="w-16 bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-center text-xs text-white outline-none">
+                </div>
+
+                <!-- Paper Size -->
+                <div class="p-3 flex items-center justify-between">
+                    <span class="font-semibold text-slate-300">Paper Size</span>
+                    <select id="paperSize" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none max-w-[160px]">
+                        <option value="A4" selected>A4</option>
+                        <option value="Letter">Letter 8.5"x11"</option>
+                        <option value="Legal">Legal 8.5"x14"</option>
+                        <option value="A5">A5</option>
+                        <option value="B5">B5</option>
+                        <option value="4x6">4"x6" 10x15cm</option>
+                        <option value="5x7">5"x7" 13x18cm</option>
+                        <option value="8x10">8"x10" 20x25cm</option>
+                        <option value="L">L 89x127mm</option>
+                        <option value="2L">2L 127x178mm</option>
+                        <option value="Square">Square 5"x5" 13x13cm</option>
+                        <option value="Hagaki">Hagaki 100x148mm</option>
+                        <option value="Card">Card 2.17"x3.58"</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Paper Size</label>
-                    <select id="paperSize" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none">
-                        <option value="A4">A4 Sheet</option>
-                        <option value="4x6">Photo 4x6</option>
-                        <option value="5x7">Photo 5x7</option>
+
+                <!-- Media Type -->
+                <div class="p-3 flex items-center justify-between">
+                    <span class="font-semibold text-slate-300">Media Type</span>
+                    <select id="mediaType" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none max-w-[160px]">
+                        <option value="Plain Paper" selected>Plain Paper</option>
+                        <option value="Photo Paper Plus Glossy II">Photo Paper Plus Glossy II</option>
+                        <option value="Photo Paper Pro Luster">Photo Paper Pro Luster</option>
+                        <option value="Photo Paper Plus Semi-gloss">Photo Paper Plus Semi-gloss</option>
+                        <option value="Glossy Photo Paper">Glossy Photo Paper</option>
+                        <option value="Matte Photo Paper">Matte Photo Paper</option>
+                        <option value="Photo Paper">Photo Paper</option>
+                        <option value="Ink Jet Hagaki">Ink Jet Hagaki</option>
+                        <option value="Hagaki">Hagaki</option>
+                        <option value="High Resolution Paper">High Resolution Paper</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">Copies</label>
-                    <input type="number" id="copies" min="1" max="50" value="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-xs text-slate-200 outline-none">
+
+                <!-- Border -->
+                <div class="p-3 flex items-center justify-between">
+                    <span class="font-semibold text-slate-300">Border</span>
+                    <select id="border" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none">
+                        <option value="Bordered" selected>Bordered</option>
+                        <option value="Borderless">Borderless</option>
+                    </select>
                 </div>
+
+                <!-- Color Mode -->
+                <div class="p-3 flex items-center justify-between">
+                    <span class="font-semibold text-slate-300">Color Mode</span>
+                    <select id="colorMode" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none">
+                        <option value="Color" selected>Color</option>
+                        <option value="Monochrome">Monochrome (B&W)</option>
+                    </select>
+                </div>
+
             </div>
 
-            <!-- Dynamic Pricing & Settlement Box -->
-            <div class="bg-gradient-to-b from-slate-800/50 to-slate-800/90 border border-slate-700/80 rounded-2xl p-4 space-y-3 text-center">
-                <div class="flex items-center justify-between px-2 text-xs">
-                    <span class="text-slate-400 font-medium">Estimated Bill:</span>
-                    <span id="priceDisplay" class="text-base font-bold text-emerald-400">₹0.00</span>
+            <!-- Dynamic UPI QR & Price Box -->
+            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 text-center space-y-3">
+                <div class="flex items-center justify-between px-1 text-xs">
+                    <span class="text-slate-400 font-semibold">Total Price:</span>
+                    <span id="priceDisplay" class="text-base font-extrabold text-cyan-400">₹0.00</span>
                 </div>
-                <div id="qrWrapper" class="inline-block p-3 bg-white rounded-2xl shadow-xl">
-                    <div id="qrcode" class="flex items-center justify-center"></div>
+                <div class="inline-block p-2.5 bg-white rounded-xl shadow-lg">
+                    <div id="qrcode"></div>
                 </div>
-                <p id="upiNotice" class="text-[11px] text-slate-400">Scan via Google Pay, PhonePe, or Paytm</p>
+                <p class="text-[11px] text-slate-400">Scan via PhonePe, GPay, or Paytm</p>
             </div>
 
-            <button type="submit" id="submitBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-500 font-bold text-xs text-white rounded-xl shadow-lg transition duration-150">
-                Confirm & Send to Print Queue
+            <button type="submit" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg transition">
+                Send to Printer & Pay
             </button>
         </form>
+
     </div>
 
     <script>
         let selectedFile = null;
         let config = {};
         const qrcodeContainer = document.getElementById('qrcode');
-        let qrCodeInstance = null;
+        let currentJobId = null;
+        let pollTimer = null;
 
         async function init() {
             const res = await fetch('/api/config');
@@ -93,24 +173,122 @@
 
         function recalc() {
             if (!config.rates) return;
-            const size = document.getElementById('paperSize').value;
+            const media = document.getElementById('mediaType').value;
             const mode = document.getElementById('colorMode').value;
             const copies = parseInt(document.getElementById('copies').value) || 1;
 
-            let rate = config.rates.bw_a4;
-            if (size === '4x6') rate = config.rates.photo_4x6;
-            else if (size === '5x7') rate = config.rates.photo_5x7;
-            else if (mode === 'color') rate = config.rates.color_a4;
+            let rate = config.rates.plain_bw || 3;
+            if (media.includes('Glossy') || media.includes('Luster') || media.includes('Semi-gloss')) {
+                rate = config.rates.photo_glossy || 20;
+            } else if (media.includes('Matte') || media.includes('High Resolution')) {
+                rate = config.rates.photo_matte || 25;
+            } else if (mode === 'Color') {
+                rate = config.rates.plain_color || 10;
+            }
 
             const total = (rate * copies).toFixed(2);
             document.getElementById('priceDisplay').textContent = `₹${total}`;
 
-            // Generate UPI Intent Link
-            const upiString = `upi://pay?pa=${config.upi_id}&pn=${encodeURIComponent(config.payee_name)}&am=${total}&cu=INR`;             qrcodeContainer.innerHTML = '';             qrCodeInstance = new QRCode(qrcodeContainer, {                 text: upiString,                 width: 120,                 height: 120             });         }          ['colorMode', 'paperSize', 'copies'].forEach(id => {             document.getElementById(id).addEventListener('change', recalc);             document.getElementById(id).addEventListener('input', recalc);         });          function handleFile(file) {             if (!file) return;             selectedFile = file;             document.getElementById('fileName').textContent = file.name;             const reader = new FileReader();             reader.onload = e => {                 document.getElementById('previewImg').src = e.target.result;                 document.getElementById('previewCard').classList.remove('hidden');             };             reader.readAsDataURL(file);         }          document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));         document.getElementById('cameraInput').addEventListener('change', e => handleFile(e.target.files[0]));         document.getElementById('removeFile').addEventListener('click', () => {             selectedFile = null;             document.getElementById('fileInput').value = '';             document.getElementById('cameraInput').value = '';             document.getElementById('previewCard').classList.add('hidden');         });          document.getElementById('customerForm').addEventListener('submit', async e => {             e.preventDefault();             if (!selectedFile) return alert('Select or scan an image first');              const fd = new FormData();             fd.append('file', selectedFile);             fd.append('color_mode', document.getElementById('colorMode').value);             fd.append('paper_size', document.getElementById('paperSize').value);             fd.append('copies', document.getElementById('copies').value);              const res = await fetch('/upload', { method: 'POST', body: fd });             const data = await res.json();             if (res.ok) {                 alert(`Order #${data.job.id} registered! Verify payment with the shopkeeper.`);
-                document.getElementById('removeFile').click();
+            // UPI string
+            const upiString = `upi://pay?pa=${config.upi_id}&pn=${encodeURIComponent(config.payee_name)}&am=${total}&cu=INR`;
+            qrcodeContainer.innerHTML = '';
+            new QRCode(qrcodeContainer, { text: upiString, width: 110, height: 110 });
+        }
+
+        ['copies', 'paperSize', 'mediaType', 'border', 'colorMode'].forEach(id => {
+            document.getElementById(id).addEventListener('change', recalc);
+            document.getElementById(id).addEventListener('input', recalc);
+        });
+
+        function handleFile(file) {
+            if (!file) return;
+            selectedFile = file;
+            document.getElementById('fileName').textContent = file.name;
+            const r = new FileReader();
+            r.onload = e => {
+                document.getElementById('previewImg').src = e.target.result;
+                document.getElementById('previewCard').classList.remove('hidden');
+            };
+            r.readAsDataURL(file);
+        }
+
+        document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
+        document.getElementById('cameraInput').addEventListener('change', e => handleFile(e.target.files[0]));
+        document.getElementById('removeFile').addEventListener('click', () => {
+            selectedFile = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('cameraInput').value = '';
+            document.getElementById('previewCard').classList.add('hidden');
+        });
+
+        document.getElementById('canonForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            if (!selectedFile) return alert('Select or scan an image first');
+
+            const fd = new FormData();
+            fd.append('file', selectedFile);
+            fd.append('copies', document.getElementById('copies').value);
+            fd.append('paper_size', document.getElementById('paperSize').value);
+            fd.append('media_type', document.getElementById('mediaType').value);
+            fd.append('border', document.getElementById('border').value);
+            fd.append('color_mode', document.getElementById('colorMode').value);
+
+            const res = await fetch('/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok) {
+                currentJobId = data.job.id;
+                document.getElementById('trackerOrderId').textContent = `Order #${currentJobId}`;
+                document.getElementById('trackerModal').classList.remove('hidden');
+                pollJobProgress(currentJobId);
             } else {
                 alert(data.error || 'Upload error');
             }
+        });
+
+        function pollJobProgress(jobId) {
+            if (pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(async () => {
+                const res = await fetch(`/api/job/${jobId}`);
+                if (!res.ok) return;
+                const job = await res.json();
+
+                const statusEl = document.getElementById('trackerStatus');
+                const descEl = document.getElementById('trackerDesc');
+                const step1 = document.getElementById('step1');
+                const step2 = document.getElementById('step2');
+                const step3 = document.getElementById('step3');
+                const bar1 = document.getElementById('bar1');
+                const bar2 = document.getElementById('bar2');
+                const closeBtn = document.getElementById('closeTrackerBtn');
+
+                if (job.print_status === 'Waiting') {
+                    statusEl.textContent = 'Waiting for Payment Approval...';
+                    descEl.textContent = 'Show UPI transaction confirmation to counter.';
+                    step1.className = 'h-3 w-3 rounded-full bg-cyan-500 animate-ping';
+                } else if (job.print_status === 'Printing') {
+                    statusEl.textContent = 'Printing Document...';
+                    descEl.textContent = 'Canon G3010 is printing your page now.';
+                    step1.className = 'h-3 w-3 rounded-full bg-cyan-500';
+                    bar1.className = 'h-0.5 w-8 bg-cyan-500';
+                    step2.className = 'h-3 w-3 rounded-full bg-amber-400 animate-pulse';
+                } else if (job.print_status === 'Completed') {
+                    statusEl.textContent = 'Print Completed!';
+                    descEl.textContent = 'Please collect your sheets from the tray.';
+                    step1.className = 'h-3 w-3 rounded-full bg-cyan-500';
+                    bar1.className = 'h-0.5 w-8 bg-cyan-500';
+                    step2.className = 'h-3 w-3 rounded-full bg-cyan-500';
+                    bar2.className = 'h-0.5 w-8 bg-cyan-500';
+                    step3.className = 'h-3 w-3 rounded-full bg-emerald-400';
+                    closeBtn.classList.remove('hidden');
+                    clearInterval(pollTimer);
+                }
+            }, 2500);
+        }
+
+        document.getElementById('closeTrackerBtn').addEventListener('click', () => {
+            document.getElementById('trackerModal').classList.add('hidden');
+            document.getElementById('removeFile').click();
+            document.getElementById('closeTrackerBtn').classList.add('hidden');
         });
 
         init();
