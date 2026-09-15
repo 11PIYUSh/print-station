@@ -4,9 +4,8 @@ import socket
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
-from PIL import Image
+from PIL import Image, ImageDraw
 
-# Import the native print bridge
 import print_bridge
 
 app = Flask(__name__)
@@ -62,7 +61,7 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-def check_printer_socket(ip, port=9100, timeout=1.5):
+def check_printer_socket(ip, port, timeout=1.2):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(timeout)
@@ -122,12 +121,16 @@ def get_printer_status():
 
 @app.route('/api/printer/test_blank', methods=['POST'])
 def test_blank_page():
-    test_path = os.path.join(app.config['UPLOAD_FOLDER'], 'blank_test.jpg')
-    img = Image.new('RGB', (1240, 1754), color=(255, 255, 255))
-    img.save(test_path, 'JPEG', quality=90)
+    test_path = os.path.join(app.config['UPLOAD_FOLDER'], 'test_page.jpg')
+    # Generate test page with actual visible banner so it doesn't print blank
+    img = Image.new('RGB', (1200, 1600), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([(100, 100), (1100, 300)], fill=(20, 20, 20))
+    draw.rectangle([(150, 400), (1050, 500)], fill=(0, 120, 220))
+    img.save(test_path, 'JPEG')
     
     ip = SETTINGS.get('printer_ip', '192.168.1.16')
-    success, msg = print_bridge.dispatch_print(test_path, ip, 9100)
+    success, msg = print_bridge.dispatch_print(test_path, ip, paper_size='A4', color_mode='Color', copies=1)
     if success:
         return jsonify({'success': True, 'method': msg})
     return jsonify({'success': False, 'error': msg}), 500
@@ -194,21 +197,14 @@ def verify_and_print(job_id):
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], target['filename'])
     ip = SETTINGS.get('printer_ip', '192.168.1.16')
 
-    # Convert to standard JPEG format
-    processed_path = file_path + "_ready.jpg"
-    try:
-        with Image.open(file_path) as im:
-            if target['color_mode'] == 'Monochrome':
-                im = im.convert('L')
-            else:
-                im = im.convert('RGB')
-            im.save(processed_path, 'JPEG', quality=95)
-        print_target = processed_path
-    except Exception:
-        print_target = file_path
+    success, msg = print_bridge.dispatch_print(
+        file_path=file_path,
+        printer_ip=ip,
+        paper_size=target.get('paper_size', 'A4'),
+        color_mode=target.get('color_mode', 'Color'),
+        copies=target.get('copies', 1)
+    )
 
-    # Trigger through the print bridge
-    success, msg = print_bridge.dispatch_print(print_target, ip, 9100)
     if success:
         target['print_status'] = 'Completed'
         return jsonify({'success': True, 'method': msg})
