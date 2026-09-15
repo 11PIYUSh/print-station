@@ -3,331 +3,255 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard — Canon G3010</title>
+    <title>Admin Station — Satya Xerox</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased p-4 sm:p-6">
-    <div class="max-w-7xl mx-auto space-y-6">
+<body class="bg-[#09090B] text-zinc-100 min-h-screen flex flex-col justify-between antialiased p-4 sm:p-6 selection:bg-blue-600 selection:text-white">
+
+    <div class="max-w-6xl mx-auto w-full space-y-6 flex-grow">
         
         <!-- Header -->
-        <header class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-zinc-800/80">
             <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-black text-xl border border-cyan-500/30">
-                    ⌘
-                </div>
+                <img id="adminLogo" src="/static/logo.png" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=satya'" class="h-11 w-11 rounded-2xl object-contain border border-zinc-800 bg-zinc-900 p-1 shadow-sm">
                 <div>
-                    <h1 class="text-xl font-bold text-white tracking-tight">Print Station Command</h1>
-                    <p class="text-xs text-slate-400">Settings, Pricing Matrix & Hardware Dispatch</p>
+                    <h1 class="text-lg font-bold text-white leading-tight">Admin Station Control</h1>
+                    <p class="text-xs text-zinc-400">Configure rates, UPI credentials, and authorize prints</p>
                 </div>
             </div>
-
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-                <div class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 flex items-center gap-2">
-                    <span id="dot9100" class="h-2 w-2 rounded-full bg-slate-500"></span>
-                    <span class="text-slate-300">RAW: 9100</span>
-                </div>
-                <div class="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 flex items-center gap-2">
-                    <span id="dot631" class="h-2 w-2 rounded-full bg-slate-500"></span>
-                    <span class="text-slate-300">IPP: 631</span>
-                </div>
-                <div class="px-3.5 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 font-bold flex items-center gap-2">
-                    <span id="mainDot" class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span id="statusText" class="text-slate-200">192.168.1.16</span>
-                </div>
+            <div class="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full text-xs shadow-sm">
+                <span id="statusDot" class="h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+                <span id="statusLabel" class="text-zinc-300 font-medium">Checking Canon G3010...</span>
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- Left Column: Settings, Full Size Rates & Diagnostics -->
-            <aside class="lg:col-span-5 space-y-6">
+            <!-- Left Controls: Rates & Setup -->
+            <section class="lg:col-span-5 space-y-5">
                 
-                <!-- Hardware Diagnostic Card with Test Blank Page -->
-                <div class="bg-gradient-to-b from-slate-900 to-slate-900/90 border border-cyan-500/30 rounded-3xl p-5 shadow-xl space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Hardware Test Tools</h2>
-                        <span class="text-[10px] bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-md border border-cyan-500/20">Canon G3010</span>
-                    </div>
-                    <p class="text-xs text-slate-400">Check physical paper pickup and feeder response without customer files.</p>
-                    
-                    <button id="testBlankBtn" class="w-full py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 font-bold text-xs text-white rounded-xl shadow-lg transition flex items-center justify-center gap-2">
-                        <span>📄</span>
-                        <span>Print Blank / Test Page</span>
-                    </button>
-                    <p id="testResultMsg" class="text-[11px] text-center text-slate-400 hidden"></p>
-                </div>
-
-                <!-- UPI & Core IP Settings -->
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-3 text-xs">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Network & Payment Setup</h2>
-                    
-                    <div>
-                        <label class="block text-slate-400 mb-1 font-semibold">Canon G3010 IP Address</label>
-                        <input type="text" id="printerIp" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-mono outline-none focus:border-cyan-500">
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1 font-semibold">UPI ID (VPA)</label>
-                        <input type="text" id="upiId" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white outline-none focus:border-cyan-500">
-                    </div>
-                    <div>
-                        <label class="block text-slate-400 mb-1 font-semibold">Payee / Business Name</label>
-                        <input type="text" id="payeeName" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white outline-none focus:border-cyan-500">
+                <!-- Branding & Logo -->
+                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Portal Branding</h2>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Store Name</label>
+                            <input type="text" id="shopNameInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Tagline / Subheading</label>
+                            <input type="text" id="taglineInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Upload Store Logo</label>
+                            <input type="file" id="logoInput" accept="image/*" class="w-full text-xs text-zinc-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 cursor-pointer">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Complete Paper Size Rates Matrix -->
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-400">All Sizes Pricing Matrix (₹)</h2>
-                        <span class="text-[10px] text-slate-500">Per sheet</span>
+                <!-- UPI & Hardware -->
+                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">UPI & Canon IP</h2>
+                    <div class="space-y-3 text-xs">
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">UPI VPA</label>
+                            <input type="text" id="upiIdInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">UPI Payee Name</label>
+                            <input type="text" id="payeeNameInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Canon G3010 Local IP Address</label>
+                            <input type="text" id="printerIpInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
+                        </div>
                     </div>
+                </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs" id="rateGrid">
-                        <!-- Standard Sheet Sizes -->
+                <!-- Rate Configuration -->
+                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Rate Banner Setup (₹/page)</h2>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                            <label class="block text-slate-400 mb-1">A4 Standard</label>
-                            <input type="number" id="rate_A4" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
+                            <label class="block text-zinc-400 mb-1 font-medium">B&W Single (₹)</label>
+                            <input type="number" id="bwSingleInput" step="0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                         <div>
-                            <label class="block text-slate-400 mb-1">Letter 8.5x11</label>
-                            <input type="number" id="rate_Letter" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
+                            <label class="block text-zinc-400 mb-1 font-medium">Color Single (₹)</label>
+                            <input type="number" id="colorSingleInput" step="0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                         <div>
-                            <label class="block text-slate-400 mb-1">Legal 8.5x14</label>
-                            <input type="number" id="rate_Legal" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
+                            <label class="block text-zinc-400 mb-1 font-medium">B&W Double (₹)</label>
+                            <input type="number" id="bwDoubleInput" step="0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                         <div>
-                            <label class="block text-slate-400 mb-1">A5 Sheet</label>
-                            <input type="number" id="rate_A5" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">B5 Sheet</label>
-                            <input type="number" id="rate_B5" step="0.5" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">Photo 4"x6"</label>
-                            <input type="number" id="rate_4x6" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">Photo 5"x7"</label>
-                            <input type="number" id="rate_5x7" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">Studio 8"x10"</label>
-                            <input type="number" id="rate_8x10" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">L (89x127mm)</label>
-                            <input type="number" id="rate_L" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">2L (127x178)</label>
-                            <input type="number" id="rate_2L" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">Square 5"x5"</label>
-                            <input type="number" id="rate_Square" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">Hagaki Post</label>
-                            <input type="number" id="rate_Hagaki" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-slate-400 mb-1">Card Size</label>
-                            <input type="number" id="rate_Card" step="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <!-- Add-ons -->
-                        <div>
-                            <label class="block text-cyan-400 mb-1 font-semibold">+ Color Addon</label>
-                            <input type="number" id="rate_color_addon" step="1" class="w-full bg-slate-800 border border-cyan-500/40 rounded-xl p-2 text-white outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-cyan-400 mb-1 font-semibold">+ Photo Paper</label>
-                            <input type="number" id="rate_photo_paper_addon" step="1" class="w-full bg-slate-800 border border-cyan-500/40 rounded-xl p-2 text-white outline-none">
+                            <label class="block text-zinc-400 mb-1 font-medium">Color Double (₹)</label>
+                            <input type="number" id="colorDoubleInput" step="0.1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                     </div>
 
-                    <button id="saveSettingsBtn" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-xs text-white rounded-xl shadow-lg transition">
-                        Save All Settings & Prices
+                    <button id="saveConfigBtn" class="w-full py-2.5 bg-[#2563EB] hover:bg-blue-600 font-bold text-xs text-white rounded-xl shadow-lg shadow-blue-600/20 transition">
+                        Save Configurations
                     </button>
                 </div>
 
-            </aside>
+            </section>
 
-            <!-- Right Column: Verification & Order Queue -->
-            <main class="lg:col-span-7 space-y-6">
-                <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+            <!-- Right Queue: Live Authorization -->
+            <section class="lg:col-span-7 space-y-4">
+                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex justify-between items-center pb-2 border-b border-zinc-800">
                         <div>
-                            <h2 class="text-base font-bold text-white tracking-tight">Queue & Payment Verification</h2>
-                            <p class="text-xs text-emerald-400 font-semibold mt-0.5" id="revMetric">Settled Revenue: ₹0.00</p>
+                            <h2 class="text-sm font-bold text-white">Payment & Print Queue</h2>
+                            <p class="text-xs text-zinc-400" id="totalRevDisplay">Total Settled: ₹0.00</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span id="orderCountBadge" class="text-xs bg-slate-800 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-700 font-semibold">0 Orders</span>
-                            <button onclick="loadQueue()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-xl text-slate-200 transition">
-                                Refresh
-                            </button>
-                        </div>
+                        <button onclick="loadJobs()" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg font-semibold text-zinc-200 transition">
+                            Refresh
+                        </button>
                     </div>
 
-                    <div id="queueList" class="space-y-3 max-h-[640px] overflow-y-auto pr-1">
-                        <p class="text-xs text-slate-500 text-center py-12">No orders placed yet.</p>
+                    <div id="jobsContainer" class="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                        <p class="text-xs text-zinc-500 text-center py-12">No orders in queue.</p>
                     </div>
                 </div>
-            </main>
+            </section>
 
         </div>
     </div>
 
-    <script>
-        const rateKeys = ['A4', 'Letter', 'Legal', 'A5', 'B5', '4x6', '5x7', '8x10', 'L', '2L', 'Square', 'Hagaki', 'Card', 'color_addon', 'photo_paper_addon'];
+    <!-- Persistent Footer -->
+    <footer class="py-5 border-t border-zinc-900 bg-[#000000] text-center space-y-1 mt-6">
+        <p class="text-xs font-semibold text-zinc-400 tracking-wide">Created & Designed by <span class="text-blue-500 font-extrabold uppercase">PIYUSH</span></p>
+        <p class="text-[10px] text-zinc-600">ApnaPrinter Cloud Integration Hub</p>
+    </footer>
 
-        async function fetchConfig() {
+    <script>
+        async function fetchSettings() {
             const res = await fetch('/api/config');
             const data = await res.json();
-            document.getElementById('printerIp').value = data.printer_ip || '192.168.1.16';
-            document.getElementById('upiId').value = data.upi_id || '';
-            document.getElementById('payeeName').value = data.payee_name || '';
+            
+            document.getElementById('shopNameInput').value = data.shop_name || '';
+            document.getElementById('taglineInput').value = data.tagline || '';
+            document.getElementById('upiIdInput').value = data.upi_id || '';
+            document.getElementById('payeeNameInput').value = data.payee_name || '';
+            document.getElementById('printerIpInput').value = data.printer_ip || '';
+
+            if (data.logo_url) document.getElementById('adminLogo').src = data.logo_url;
 
             if (data.rates) {
-                rateKeys.forEach(k => {
-                    const el = document.getElementById(`rate_${k}`);
-                    if (el && data.rates[k] !== undefined) el.value = data.rates[k];
-                });
+                document.getElementById('bwSingleInput').value = data.rates.bw_single;
+                document.getElementById('colorSingleInput').value = data.rates.color_single;
+                document.getElementById('bwDoubleInput').value = data.rates.bw_double;
+                document.getElementById('colorDoubleInput').value = data.rates.color_double;
             }
         }
 
-        async function pollStatus() {
+        async function pollPrinter() {
             try {
                 const res = await fetch('/api/printer/status');
-                const d = await res.json();
-                document.getElementById('dot9100').className = `h-2 w-2 rounded-full ${d.raw_port_9100 ? 'bg-emerald-400' : 'bg-rose-500'}`;
-                document.getElementById('dot631').className = `h-2 w-2 rounded-full ${d.ipp_port_631 ? 'bg-emerald-400' : 'bg-rose-500'}`;
-                
-                const isOnline = d.raw_port_9100 || d.ipp_port_631;
-                document.getElementById('mainDot').className = `h-2 w-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-rose-500'}`;
-                document.getElementById('statusText').textContent = `G3010: ${d.status} (${d.ip})`;
+                const data = await res.json();
+                const isOnline = data.status === 'Online';
+                document.getElementById('statusDot').className = `h-2 w-2 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-rose-500'}`;
+                document.getElementById('statusLabel').textContent = `Printer: ${data.status} (${data.ip})`;
             } catch {
-                document.getElementById('statusText').textContent = 'Server Offline';
+                document.getElementById('statusLabel').textContent = 'Server Offline';
             }
         }
 
-        document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
-            const updatedRates = {};
-            rateKeys.forEach(k => {
-                const el = document.getElementById(`rate_${k}`);
-                if (el) updatedRates[k] = parseFloat(el.value) || 0;
-            });
+        document.getElementById('logoInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const fd = new FormData();
+            fd.append('logo', file);
+            const res = await fetch('/api/admin/logo/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (res.ok) {
+                document.getElementById('adminLogo').src = data.logo_url;
+                alert('Store logo updated!');
+            }
+        });
 
+        document.getElementById('saveConfigBtn').addEventListener('click', async () => {
             const payload = {
-                printer_ip: document.getElementById('printerIp').value.trim(),
-                upi_id: document.getElementById('upiId').value.trim(),
-                payee_name: document.getElementById('payeeName').value.trim(),
-                rates: updatedRates
+                shop_name: document.getElementById('shopNameInput').value,
+                tagline: document.getElementById('taglineInput').value,
+                upi_id: document.getElementById('upiIdInput').value,
+                payee_name: document.getElementById('payeeNameInput').value,
+                printer_ip: document.getElementById('printerIpInput').value,
+                rates: {
+                    bw_single: parseFloat(document.getElementById('bwSingleInput').value),
+                    color_single: parseFloat(document.getElementById('colorSingleInput').value),
+                    bw_double: parseFloat(document.getElementById('bwDoubleInput').value),
+                    color_double: parseFloat(document.getElementById('colorDoubleInput').value)
+                }
             };
-
-            await fetch('/api/admin/config/update', {
+            const res = await fetch('/api/admin/config/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            alert('Settings and size rates saved!');
-            pollStatus();
+            if (res.ok) alert('Settings saved successfully!');
+            pollPrinter();
         });
 
-        // Test Blank Page Trigger
-        document.getElementById('testBlankBtn').addEventListener('click', async () => {
-            const btn = document.getElementById('testBlankBtn');
-            const msg = document.getElementById('testResultMsg');
-            btn.disabled = true;
-            btn.textContent = 'Sending signal...';
-            msg.classList.remove('hidden');
-            msg.textContent = 'Contacting 192.168.1.16...';
-
-            try {
-                const res = await fetch('/api/printer/test_blank', { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    msg.textContent = `Signal sent via ${data.method}! Check printer paper tray.`;
-                    msg.className = 'text-[11px] text-center text-emerald-400';
-                } else {
-                    msg.textContent = `Failed: ${data.error}`;
-                    msg.className = 'text-[11px] text-center text-rose-400';
-                }
-            } catch (err) {
-                msg.textContent = 'Failed to reach local server.';
-                msg.className = 'text-[11px] text-center text-rose-400';
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<span>📄</span><span>Print Blank / Test Page</span>';
-            }
-        });
-
-        async function loadQueue() {
+        async function loadJobs() {
             const res = await fetch('/api/jobs');
             const jobs = await res.json();
-            const list = document.getElementById('queueList');
-            document.getElementById('orderCountBadge').textContent = `${jobs.length} Orders`;
+            const container = document.getElementById('jobsContainer');
 
-            let rev = 0;
-            jobs.forEach(j => { if (j.payment_status === 'Paid') rev += j.total_price; });
-            document.getElementById('revMetric').textContent = `Settled Revenue: ₹${rev.toFixed(2)}`;
+            let totalRev = 0;
+            jobs.forEach(j => {
+                if (j.payment_status === 'Paid') totalRev += j.total_price;
+            });
+            document.getElementById('totalRevDisplay').textContent = `Total Settled: ₹${totalRev.toFixed(2)}`;
 
             if (jobs.length === 0) {
-                list.innerHTML = '<p class="text-xs text-slate-500 text-center py-12">No orders placed yet.</p>';
+                container.innerHTML = '<p class="text-xs text-zinc-500 text-center py-12">No orders in queue.</p>';
                 return;
             }
 
-            list.innerHTML = jobs.slice().reverse().map(j => `
-                <div class="p-4 bg-slate-800/40 border border-slate-700/60 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            container.innerHTML = jobs.slice().reverse().map(j => `
+                <div class="p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <a href="/uploads/${j.filename}" target="_blank">
-                            <img src="/uploads/${j.filename}" class="w-14 h-14 object-cover rounded-xl border border-slate-600 hover:opacity-80 transition">
-                        </a>
+                        <img src="/uploads/${j.filename}" class="h-12 w-12 rounded-lg object-cover border border-zinc-800">
                         <div>
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-bold text-white">#${j.id}</span>
-                                <span class="text-xs font-semibold text-slate-300 truncate max-w-[180px]">${j.original_name}</span>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${j.payment_status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${j.payment_status}</span>
+                                <span class="text-xs font-medium text-zinc-300 truncate max-w-[130px]">${j.original_name}</span>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${j.payment_status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${j.payment_status}</span>
                             </div>
-                            <p class="text-[11px] text-slate-400 mt-1">
-                                ${j.copies}x • ${j.paper_size} • ${j.color_mode} • ${j.media_type} (${j.border})
-                            </p>
-                            <p class="text-[10px] text-slate-500 mt-0.5">${j.time}</p>
+                            <p class="text-[11px] text-zinc-500 mt-0.5">${j.time} • ${j.copies}x • ${j.color_mode.toUpperCase()} • Side: ${j.print_side || 'single'}</p>
                         </div>
                     </div>
 
-                    <div class="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2">
+                    <div class="flex items-center justify-between sm:justify-end gap-3">
                         <span class="text-sm font-extrabold text-white">₹${j.total_price.toFixed(2)}</span>
                         ${j.print_status !== 'Completed' ? `
-                            <button onclick="approveJob(${j.id})" class="px-3.5 py-2 text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-lg transition">
+                            <button onclick="approve(${j.id})" class="px-3.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-sm transition">
                                 Verify & Print
                             </button>
                         ` : `
-                            <span class="text-xs text-emerald-400 font-bold px-2.5 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20">Printed ✓</span>
+                            <span class="text-xs text-zinc-500 font-medium px-2 py-1">Printed</span>
                         `}
                     </div>
                 </div>
             `).join('');
         }
 
-        async function approveJob(id) {
-            const btn = event.target;
-            btn.textContent = 'Printing...';
-            btn.disabled = true;
+        async function approve(id) {
             const res = await fetch(`/api/jobs/verify_and_print/${id}`, { method: 'POST' });
             const data = await res.json();
-            if (!res.ok) alert(`Print error: ${data.error || 'Check printer connection'}`);
-            loadQueue();
+            if (!res.ok) alert(data.error || 'Print failed');
+            loadJobs();
         }
 
-        fetchConfig();
-        pollStatus();
-        loadQueue();
-        setInterval(loadQueue, 4000);
-        setInterval(pollStatus, 15000);
+        fetchSettings();
+        pollPrinter();
+        loadJobs();
+        setInterval(loadJobs, 3500);
+        setInterval(pollPrinter, 15000);
     </script>
 </body>
 </html>

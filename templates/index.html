@@ -3,293 +3,598 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canon Smart Print</title>
+    <title>Satya Xerox — Online Print Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Plus Jakarta Sans', sans-serif; }</style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .ratio-a4 { aspect-ratio: 1 / 1.414; }
+        .is-bw { filter: grayscale(100%) contrast(110%); }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col items-center justify-center p-4">
+<body class="bg-[#09090B] text-zinc-100 min-h-screen flex flex-col justify-between antialiased selection:bg-blue-600 selection:text-white">
 
-    <!-- Active Tracker Modal / Screen (When user has an active job) -->
-    <div id="trackerModal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center space-y-6 shadow-2xl">
-            <div>
-                <span class="text-xs font-bold uppercase tracking-wider text-cyan-400" id="trackerOrderId">Order #0</span>
-                <h2 class="text-xl font-bold text-white mt-1">Print Progress</h2>
+    <!-- Top Navigation Header -->
+    <header class="bg-[#000000]/95 border-b border-zinc-800 sticky top-0 z-40 backdrop-blur-md">
+        <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <img id="shopLogo" src="/static/logo.png" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=satya'" class="h-9 w-9 rounded-xl object-contain border border-zinc-800 bg-zinc-900 p-0.5">
+                <div>
+                    <h1 id="shopTitle" class="text-sm font-bold text-white leading-tight">Satya Xerox</h1>
+                    <p id="shopSub" class="text-[9px] tracking-wider text-zinc-400 font-semibold uppercase">ONLINE PRINT PORTAL</p>
+                </div>
+            </div>
+            <!-- Dynamic Switch Button between Images & Document Mode -->
+            <button type="button" id="modeSwitchBtn" onclick="togglePortalMode()" class="bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-1.5 transition">
+                <span id="switchBtnIcon">📄</span>
+                <span id="switchBtnText">Print Document</span>
+            </button>
+        </div>
+
+        <!-- Rates Banner -->
+        <div class="max-w-md mx-auto px-4 pb-2.5">
+            <div class="bg-zinc-900/90 border border-zinc-800 rounded-xl px-3 py-1.5 grid grid-cols-2 gap-x-3 text-[11px]">
+                <div class="flex items-center justify-between">
+                    <span class="text-zinc-400 flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-zinc-300"></span> B&W Single</span>
+                    <span class="font-bold text-zinc-100" id="rateBwSingle">₹2.00<span class="text-[9px] text-zinc-500 font-normal">/p</span></span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-zinc-400 flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span> Color Single</span>
+                    <span class="font-bold text-zinc-100" id="rateColorSingle">₹5.00<span class="text-[9px] text-zinc-500 font-normal">/p</span></span>
+                </div>
+                <div class="flex items-center justify-between border-t border-zinc-800/80 pt-1 mt-0.5">
+                    <span class="text-zinc-400">⇄ B&W Double</span>
+                    <span class="font-bold text-zinc-100" id="rateBwDouble">₹5.00<span class="text-[9px] text-zinc-500 font-normal">/p</span></span>
+                </div>
+                <div class="flex items-center justify-between border-t border-zinc-800/80 pt-1 mt-0.5">
+                    <span class="text-zinc-400">⇄ Color Double</span>
+                    <span class="font-bold text-zinc-100" id="rateColorDouble">₹0.50<span class="text-[9px] text-zinc-500 font-normal">/p</span></span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dynamic Body Container -->
+    <main class="w-full max-w-md mx-auto px-4 py-4 flex-grow space-y-4">
+
+        <!-- ================= SCREEN 1: PRINT IMAGES (A4) ================= -->
+        <div id="screenImages" class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
+            
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-white">Print Images (A4)</h2>
+                    <p class="text-xs text-zinc-400">Upload, layout, crop, and print images on A4 sheet</p>
+                </div>
+                <span class="text-[10px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800 px-2 py-1 rounded-lg">Fixed A4 Size</span>
             </div>
 
-            <!-- Visual Progress Dots -->
-            <div class="flex items-center justify-center gap-2">
-                <div id="step1" class="h-3 w-3 rounded-full bg-cyan-500 animate-ping"></div>
-                <div class="h-0.5 w-8 bg-slate-800" id="bar1"></div>
-                <div id="step2" class="h-3 w-3 rounded-full bg-slate-800"></div>
-                <div class="h-0.5 w-8 bg-slate-800" id="bar2"></div>
-                <div id="step3" class="h-3 w-3 rounded-full bg-slate-800"></div>
+            <!-- Upload Drag Box -->
+            <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-6 text-center cursor-pointer transition">
+                <div class="flex flex-col items-center justify-center gap-1.5">
+                    <svg class="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span class="text-xs font-bold text-zinc-200">Tap or drag images here</span>
+                    <span class="text-[10px] text-zinc-500">JPG, PNG, WEBP (Multiple allowed, up to 25MB)</span>
+                </div>
+                <input type="file" id="imageFileInput" accept="image/*" class="hidden">
+            </label>
+
+            <!-- Page Layout Presets -->
+            <div class="space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-zinc-300">Page Layout Preset</span>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="setLayout('1_photo')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-600 text-white shadow-sm">🖼️ 1 Photo / 1 Page</button>
+                        <button type="button" onclick="setLayout('passport')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-purple-600 text-white shadow-sm">👤 Passport Size (8 Photos)</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
+                    <button type="button" onclick="setLayout('1_photo')" id="btnLayout1" class="p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border-2 border-blue-500 rounded-sm"></div>
+                        <span class="text-[11px]">1 Photo / Page (Multi)</span>
+                    </button>
+                    <button type="button" onclick="setLayout('1_full')" id="btnLayoutFull" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm bg-zinc-900"></div>
+                        <span class="text-[11px]">1 Image (Full Sheet)</span>
+                    </button>
+                    <button type="button" onclick="setLayout('2_tb')" id="btnLayout2tb" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm flex flex-col justify-between p-0.5"><div class="h-1.5 bg-zinc-700 rounded-xs"></div><div class="h-1.5 bg-zinc-700 rounded-xs"></div></div>
+                        <span class="text-[11px]">2 Images (Top/Bottom)</span>
+                    </button>
+                    <button type="button" onclick="setLayout('2_lr')" id="btnLayout2lr" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm flex justify-between p-0.5"><div class="w-1.5 bg-zinc-700 rounded-xs"></div><div class="w-1.5 bg-zinc-700 rounded-xs"></div></div>
+                        <span class="text-[11px]">2 Images (Left/Right)</span>
+                    </button>
+                    <button type="button" onclick="setLayout('4_grid')" id="btnLayout4" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm grid grid-cols-2 gap-0.5 p-0.5"><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div></div>
+                        <span class="text-[11px]">4 Images (2x2 Grid)</span>
+                    </button>
+                    <button type="button" onclick="setLayout('custom')" id="btnLayoutCustom" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border border-dashed border-zinc-700 rounded-sm"></div>
+                        <span class="text-[11px]">Custom Grid</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configure Slot Box -->
+            <div class="border border-zinc-800 rounded-2xl p-3 bg-zinc-950/60 space-y-3">
+                <span class="text-[11px] font-bold text-zinc-300 block">Configure Slot:</span>
+
+                <div class="flex items-center justify-between gap-2 text-xs">
+                    <div>
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold block mb-1">FIT MODE</span>
+                        <div class="inline-flex rounded-lg border border-zinc-800 bg-zinc-900 p-0.5">
+                            <button type="button" onclick="setFit('contain')" id="fitContain" class="px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white">Fit</button>
+                            <button type="button" onclick="setFit('cover')" id="fitCover" class="px-2 py-1 rounded text-[10px] font-semibold text-zinc-400">Fill</button>
+                            <button type="button" onclick="setFit('fill')" id="fitFill" class="px-2 py-1 rounded text-[10px] font-semibold text-zinc-400">Stretch</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold block mb-1">ROTATE</span>
+                        <button type="button" onclick="rotateImage()" class="px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-[11px] font-semibold text-zinc-300 flex items-center gap-1 shadow-sm">
+                            <span>↻</span> <span id="rotateLabel">0°</span>
+                        </button>
+                    </div>
+
+                    <div>
+                        <span class="text-[10px] text-zinc-500 uppercase font-bold block mb-1">CROP</span>
+                        <button type="button" onclick="alert('Geometry auto-aligned.')" class="px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-900 text-[11px] font-semibold text-zinc-300 flex items-center gap-1 shadow-sm">
+                            <span>✂</span> Crop
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 pt-1">
+                    <div class="flex-grow">
+                        <div class="flex justify-between text-[10px] font-bold text-zinc-400 mb-1">
+                            <span>ZOOM LEVEL</span>
+                            <span id="zoomLabel" class="text-blue-400">100%</span>
+                        </div>
+                        <input type="range" id="zoomSlider" min="50" max="200" value="100" class="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                    </div>
+                    <button type="button" onclick="clearSlot()" class="text-xs text-rose-400 font-semibold border border-rose-950 bg-rose-950/30 hover:bg-rose-950/60 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition">
+                        🗑 Clear Slot
+                    </button>
+                </div>
+            </div>
+
+            <!-- Live A4 WYSIWYG Print Preview -->
+            <div class="bg-[#000000] border border-zinc-800/90 rounded-2xl p-4 text-white space-y-3">
+                <div class="flex items-center justify-between text-xs border-b border-zinc-800 pb-2">
+                    <div>
+                        <h3 class="font-bold text-white">Live A4 Print Preview</h3>
+                        <p class="text-[9px] text-zinc-400 font-medium">(WYSIWYG)</p>
+                    </div>
+                    <span class="text-[9px] text-zinc-400">What you see is what prints</span>
+                </div>
+
+                <div class="flex items-center justify-between text-xs px-2">
+                    <button type="button" class="text-zinc-500 hover:text-white">‹ Prev Page</button>
+                    <div class="text-center">
+                        <span class="font-bold text-zinc-200 text-[11px] block">Page 1 of 1</span>
+                        <span class="text-[9px] text-zinc-500">Photo 1</span>
+                    </div>
+                    <button type="button" class="text-zinc-500 hover:text-white">Next Page ›</button>
+                </div>
+
+                <!-- Realistic White A4 Paper Sheet -->
+                <div class="flex justify-center p-3 bg-zinc-950 rounded-xl">
+                    <div id="a4Canvas" class="w-full max-w-[260px] ratio-a4 bg-white rounded-xs shadow-2xl p-3 flex items-center justify-center overflow-hidden border border-zinc-300">
+                        <div id="previewSlot" class="w-full h-full flex items-center justify-center overflow-hidden text-slate-400">
+                            <span class="text-[10px] text-slate-400 text-center px-4">Upload an image to preview layout</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SCREEN 2: UPLOAD DOCUMENT (Screenshot Match) ================= -->
+        <div id="screenDocument" class="hidden bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
+            <div>
+                <h2 class="text-base font-bold text-white">Upload Document</h2>
+                <p class="text-xs text-zinc-400">Select PDF or image file to send to shop printer</p>
+            </div>
+
+            <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-8 text-center cursor-pointer transition">
+                <div class="flex flex-col items-center justify-center gap-2">
+                    <div class="h-10 w-10 rounded-full bg-blue-950/60 border border-blue-800 flex items-center justify-center text-blue-400 text-lg font-bold">↑</div>
+                    <span class="text-xs font-bold text-zinc-200">Tap or drag files here</span>
+                    <span class="text-[10px] text-zinc-500">PDF, DOCX, Images (Upload 1, 4, 5+ files, up to 25MB each)</span>
+                </div>
+                <input type="file" id="docFileInput" accept="image/*,.pdf" class="hidden">
+            </label>
+
+            <!-- Page Selection Field -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <label class="font-bold text-zinc-300">Page Selection</label>
+                    <span class="text-[10px] text-zinc-500">e.g. All, 1-5, or 2,4,7</span>
+                </div>
+                <input type="text" id="pageRangeInput" value="1-5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500">
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="button" onclick="setPageSelection('All')" class="px-3 py-1 rounded-lg text-[10px] font-semibold bg-zinc-800 text-zinc-300">All</button>
+                    <button type="button" onclick="setPageSelection('Page 1')" class="px-3 py-1 rounded-lg text-[10px] font-semibold bg-zinc-800 text-zinc-300">Page 1</button>
+                    <button type="button" onclick="setPageSelection('1-5')" class="px-3 py-1 rounded-lg text-[10px] font-semibold bg-zinc-800 text-zinc-300">1-5</button>
+                </div>
+            </div>
+
+            <!-- Print Side (Single vs Double) -->
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <label class="font-bold text-zinc-300">Print Side</label>
+                    <span class="text-[10px] text-zinc-500" id="sideRateHint">1-Side: ₹2.00/p • 2-Side: ₹5.00/p</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button type="button" onclick="setPrintSide('single')" id="btnSideSingle" class="py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-1.5">
+                        <span>📄 Single Side (1-Side)</span>
+                    </button>
+                    <button type="button" onclick="setPrintSide('double')" id="btnSideDouble" class="py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-1.5">
+                        <span>📑 Double Side (2-Side)</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= SHARED CONTROLS (Copies, Color Mode & Price) ================= -->
+        <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
+            
+            <!-- Number of Copies -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-zinc-300 block">Number of Copies</label>
+                <div class="flex items-center border border-zinc-800 bg-zinc-950 rounded-xl w-36 overflow-hidden">
+                    <button type="button" onclick="adjustCopies(-1)" class="w-11 h-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-base flex items-center justify-center border-r border-zinc-800">-</button>
+                    <input type="text" id="copiesCount" value="1" readonly class="w-14 h-10 text-center font-bold text-white text-sm outline-none bg-transparent">
+                    <button type="button" onclick="adjustCopies(1)" class="w-11 h-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-base flex items-center justify-center border-l border-zinc-800">+</button>
+                </div>
+            </div>
+
+            <!-- Color Mode Selection -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-zinc-300 block">Color Mode</label>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button type="button" onclick="setColorMode('bw')" id="btnModeBw" class="py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition">
+                        <span class="h-2 w-2 rounded-full bg-zinc-400"></span> Black & White
+                    </button>
+                    <button type="button" onclick="setColorMode('color')" id="btnModeColor" class="py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition">
+                        <span class="h-2 w-2 rounded-full bg-amber-400"></span> Full Color
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estimated Total Card -->
+            <div class="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 flex items-center justify-between">
+                <div>
+                    <span class="text-xs font-bold text-zinc-300 block">Estimated Total:</span>
+                    <span id="breakdownText" class="text-[11px] text-zinc-500">1 page (1-sided) × 1 copy × ₹2.00/page</span>
+                </div>
+                <span id="priceDisplay" class="text-2xl font-extrabold text-blue-400">₹2.00</span>
+            </div>
+
+            <!-- Continue to Print Button -->
+            <button type="button" id="continuePrintBtn" onclick="submitPrintOrder()" class="w-full py-4 bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition active:scale-[0.99]">
+                <span>Continue to Print</span>
+                <span>→</span>
+            </button>
+
+            <p class="text-[10px] text-zinc-500 text-center flex items-center justify-center gap-1">
+                <span>🛡️</span> Your file deletes automatically after printing, or you can delete it anytime.
+            </p>
+        </div>
+
+    </main>
+
+    <!-- Payment & Verification Modal -->
+    <div id="payModal" class="hidden fixed inset-0 bg-[#000000]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center space-y-5 shadow-2xl">
+            <div>
+                <span class="text-xs font-bold text-blue-400 uppercase tracking-wider" id="orderIdBadge">Order Registered</span>
+                <h3 class="text-lg font-bold text-white mt-0.5">Complete Payment</h3>
+            </div>
+
+            <div class="inline-block p-3 bg-white rounded-2xl shadow-xl">
+                <div id="qrcode"></div>
             </div>
 
             <div class="space-y-1">
-                <p id="trackerStatus" class="text-base font-bold text-white">Waiting for payment verification...</p>
-                <p id="trackerDesc" class="text-xs text-slate-400">Show payment confirmation on your phone to shop counter.</p>
+                <p class="text-xs text-zinc-400">Scan using PhonePe, GPay, or Paytm</p>
+                <p class="text-xl font-extrabold text-white" id="modalPrice">₹2.00</p>
             </div>
 
-            <button type="button" id="closeTrackerBtn" class="hidden w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white rounded-xl transition">
-                Done / Print Another
+            <!-- Live Status Progress -->
+            <div class="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
+                <div class="flex items-center justify-center gap-2">
+                    <span id="statusCircle" class="h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                    <span id="statusMessage" class="text-xs font-bold text-zinc-200">Waiting for counter approval...</span>
+                </div>
+                <p id="statusHint" class="text-[10px] text-zinc-500">Show your UPI transaction at the counter.</p>
+            </div>
+
+            <button type="button" id="closeModalBtn" onclick="closePaymentModal()" class="hidden w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl transition">
+                Done / New Order
             </button>
         </div>
     </div>
 
-    <!-- Main Client Print Setup Card -->
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5">
-        
-        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-            <div>
-                <h1 class="text-lg font-bold text-white">Print Settings</h1>
-                <p class="text-xs text-slate-400">Canon Inkjet Print Station</p>
-            </div>
-            <span class="text-xs bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-full text-cyan-400 font-semibold">G3010</span>
-        </div>
-
-        <form id="canonForm" class="space-y-4">
-            
-            <!-- Document Source Buttons -->
-            <div class="grid grid-cols-2 gap-2.5">
-                <label class="flex items-center justify-center gap-2 p-3 border border-slate-700 bg-slate-800/60 rounded-xl cursor-pointer hover:border-cyan-500 transition text-xs font-semibold">
-                    <span>📁 Image File</span>
-                    <input type="file" id="fileInput" accept="image/*" class="hidden">
-                </label>
-                <label class="flex items-center justify-center gap-2 p-3 border border-slate-700 bg-slate-800/60 rounded-xl cursor-pointer hover:border-cyan-500 transition text-xs font-semibold">
-                    <span>📷 Scan / Camera</span>
-                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
-                </label>
-            </div>
-
-            <!-- Preview Thumbnail -->
-            <div id="previewCard" class="hidden p-2.5 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <img id="previewImg" class="h-9 w-9 rounded-lg object-cover border border-slate-600">
-                    <span id="fileName" class="text-xs font-medium text-slate-200 truncate max-w-[170px]"></span>
-                </div>
-                <button type="button" id="removeFile" class="text-xs font-semibold text-rose-400">Remove</button>
-            </div>
-
-            <!-- Canon Print Options List -->
-            <div class="divide-y divide-slate-800 border border-slate-800 rounded-2xl bg-slate-900/50 overflow-hidden text-xs">
-                
-                <!-- Copies -->
-                <div class="p-3 flex items-center justify-between">
-                    <span class="font-semibold text-slate-300">Copies</span>
-                    <input type="number" id="copies" min="1" max="50" value="1" class="w-16 bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-center text-xs text-white outline-none">
-                </div>
-
-                <!-- Paper Size -->
-                <div class="p-3 flex items-center justify-between">
-                    <span class="font-semibold text-slate-300">Paper Size</span>
-                    <select id="paperSize" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none max-w-[160px]">
-                        <option value="A4" selected>A4</option>
-                        <option value="Letter">Letter 8.5"x11"</option>
-                        <option value="Legal">Legal 8.5"x14"</option>
-                        <option value="A5">A5</option>
-                        <option value="B5">B5</option>
-                        <option value="4x6">4"x6" 10x15cm</option>
-                        <option value="5x7">5"x7" 13x18cm</option>
-                        <option value="8x10">8"x10" 20x25cm</option>
-                        <option value="L">L 89x127mm</option>
-                        <option value="2L">2L 127x178mm</option>
-                        <option value="Square">Square 5"x5" 13x13cm</option>
-                        <option value="Hagaki">Hagaki 100x148mm</option>
-                        <option value="Card">Card 2.17"x3.58"</option>
-                    </select>
-                </div>
-
-                <!-- Media Type -->
-                <div class="p-3 flex items-center justify-between">
-                    <span class="font-semibold text-slate-300">Media Type</span>
-                    <select id="mediaType" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none max-w-[160px]">
-                        <option value="Plain Paper" selected>Plain Paper</option>
-                        <option value="Photo Paper Plus Glossy II">Photo Paper Plus Glossy II</option>
-                        <option value="Photo Paper Pro Luster">Photo Paper Pro Luster</option>
-                        <option value="Photo Paper Plus Semi-gloss">Photo Paper Plus Semi-gloss</option>
-                        <option value="Glossy Photo Paper">Glossy Photo Paper</option>
-                        <option value="Matte Photo Paper">Matte Photo Paper</option>
-                        <option value="Photo Paper">Photo Paper</option>
-                        <option value="Ink Jet Hagaki">Ink Jet Hagaki</option>
-                        <option value="Hagaki">Hagaki</option>
-                        <option value="High Resolution Paper">High Resolution Paper</option>
-                    </select>
-                </div>
-
-                <!-- Border -->
-                <div class="p-3 flex items-center justify-between">
-                    <span class="font-semibold text-slate-300">Border</span>
-                    <select id="border" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none">
-                        <option value="Bordered" selected>Bordered</option>
-                        <option value="Borderless">Borderless</option>
-                    </select>
-                </div>
-
-                <!-- Color Mode -->
-                <div class="p-3 flex items-center justify-between">
-                    <span class="font-semibold text-slate-300">Color Mode</span>
-                    <select id="colorMode" class="bg-slate-800 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-200 outline-none">
-                        <option value="Color" selected>Color</option>
-                        <option value="Monochrome">Monochrome (B&W)</option>
-                    </select>
-                </div>
-
-            </div>
-
-            <!-- Dynamic UPI QR & Price Box -->
-            <div class="bg-slate-800/40 border border-slate-800 rounded-2xl p-4 text-center space-y-3">
-                <div class="flex items-center justify-between px-1 text-xs">
-                    <span class="text-slate-400 font-semibold">Total Price:</span>
-                    <span id="priceDisplay" class="text-base font-extrabold text-cyan-400">₹0.00</span>
-                </div>
-                <div class="inline-block p-2.5 bg-white rounded-xl shadow-lg">
-                    <div id="qrcode"></div>
-                </div>
-                <p class="text-[11px] text-slate-400">Scan via PhonePe, GPay, or Paytm</p>
-            </div>
-
-            <button type="submit" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-xs rounded-xl shadow-lg transition">
-                Send to Printer & Pay
-            </button>
-        </form>
-
-    </div>
+    <!-- Persistent Branding Footer -->
+    <footer class="py-5 border-t border-zinc-900 bg-[#000000] text-center space-y-1">
+        <p class="text-xs font-semibold text-zinc-400 tracking-wide">Created & Designed by <span class="text-blue-500 font-extrabold uppercase">PIYUSH</span></p>
+        <p class="text-[10px] text-zinc-600">ApnaPrinter Cloud Integration Hub</p>
+    </footer>
 
     <script>
+        let currentScreen = 'images'; // 'images' or 'document'
         let selectedFile = null;
         let config = {};
-        const qrcodeContainer = document.getElementById('qrcode');
-        let currentJobId = null;
+        let activeLayout = '1_photo';
+        let fitMode = 'contain';
+        let rotationAngle = 0;
+        let zoomScale = 1;
+        let selectedColorMode = 'bw'; // 'bw' or 'color'
+        let selectedPrintSide = 'single'; // 'single' or 'double'
+        let activeJobId = null;
         let pollTimer = null;
+        let cachedDataUrl = null;
 
         async function init() {
             const res = await fetch('/api/config');
             config = await res.json();
+            
+            document.getElementById('shopTitle').textContent = config.shop_name || 'Satya Xerox';
+            document.getElementById('shopSub').textContent = config.tagline || 'ONLINE PRINT PORTAL';
+            if (config.logo_url) document.getElementById('shopLogo').src = config.logo_url;
+
+            if (config.rates) {
+                document.getElementById('rateBwSingle').innerHTML = `₹${config.rates.bw_single.toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
+                document.getElementById('rateColorSingle').innerHTML = `₹${config.rates.color_single.toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
+                document.getElementById('rateBwDouble').innerHTML = `₹${config.rates.bw_double.toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
+                document.getElementById('rateColorDouble').innerHTML = `₹${config.rates.color_double.toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
+                document.getElementById('sideRateHint').textContent = `1-Side: ₹${config.rates.bw_single.toFixed(2)}/p • 2-Side: ₹${config.rates.bw_double.toFixed(2)}/p`;
+            }
+            recalc();
+        }
+
+        // Toggle Screen View (Images vs Document)
+        function togglePortalMode() {
+            const screenImages = document.getElementById('screenImages');
+            const screenDoc = document.getElementById('screenDocument');
+            const switchBtnText = document.getElementById('switchBtnText');
+            const switchBtnIcon = document.getElementById('switchBtnIcon');
+
+            if (currentScreen === 'images') {
+                currentScreen = 'document';
+                screenImages.classList.add('hidden');
+                screenDoc.classList.remove('hidden');
+                switchBtnText.textContent = 'Print Images (A4)';
+                switchBtnIcon.textContent = '🖼️';
+            } else {
+                currentScreen = 'images';
+                screenDoc.classList.add('hidden');
+                screenImages.classList.remove('hidden');
+                switchBtnText.textContent = 'Print Document';
+                switchBtnIcon.textContent = '📄';
+            }
+            recalc();
+        }
+
+        function setPageSelection(val) {
+            document.getElementById('pageRangeInput').value = val;
+            recalc();
+        }
+
+        function setPrintSide(side) {
+            selectedPrintSide = side;
+            const btnSingle = document.getElementById('btnSideSingle');
+            const btnDouble = document.getElementById('btnSideDouble');
+            if (side === 'single') {
+                btnSingle.className = "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-1.5";
+                btnDouble.className = "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-1.5";
+            } else {
+                btnDouble.className = "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-1.5";
+                btnSingle.className = "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-1.5";
+            }
+            recalc();
+        }
+
+        function adjustCopies(delta) {
+            const input = document.getElementById('copiesCount');
+            let val = parseInt(input.value) + delta;
+            if (val < 1) val = 1;
+            if (val > 100) val = 100;
+            input.value = val;
+            recalc();
+        }
+
+        function setColorMode(mode) {
+            selectedColorMode = mode;
+            const btnBw = document.getElementById('btnModeBw');
+            const btnColor = document.getElementById('btnModeColor');
+            if (mode === 'bw') {
+                btnBw.className = "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition";
+                btnColor.className = "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition";
+            } else {
+                btnColor.className = "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition";
+                btnBw.className = "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition";
+            }
+            // Update live preview black & white filter
+            renderPreviewLayout();
             recalc();
         }
 
         function recalc() {
             if (!config.rates) return;
-            const media = document.getElementById('mediaType').value;
-            const mode = document.getElementById('colorMode').value;
-            const copies = parseInt(document.getElementById('copies').value) || 1;
-
-            let rate = config.rates.plain_bw || 3;
-            if (media.includes('Glossy') || media.includes('Luster') || media.includes('Semi-gloss')) {
-                rate = config.rates.photo_glossy || 20;
-            } else if (media.includes('Matte') || media.includes('High Resolution')) {
-                rate = config.rates.photo_matte || 25;
-            } else if (mode === 'Color') {
-                rate = config.rates.plain_color || 10;
+            const copies = parseInt(document.getElementById('copiesCount').value) || 1;
+            
+            let rate = 2.0;
+            if (selectedColorMode === 'bw') {
+                rate = (selectedPrintSide === 'double') ? config.rates.bw_double : config.rates.bw_single;
+            } else {
+                rate = (selectedPrintSide === 'double') ? config.rates.color_double : config.rates.color_single;
             }
 
             const total = (rate * copies).toFixed(2);
             document.getElementById('priceDisplay').textContent = `₹${total}`;
-
-            // UPI string
-            const upiString = `upi://pay?pa=${config.upi_id}&pn=${encodeURIComponent(config.payee_name)}&am=${total}&cu=INR`;
-            qrcodeContainer.innerHTML = '';
-            new QRCode(qrcodeContainer, { text: upiString, width: 110, height: 110 });
+            const sideText = (selectedPrintSide === 'double') ? '2-sided' : '1-sided';
+            document.getElementById('breakdownText').textContent = `1 page (${sideText}) × ${copies} copy × ₹${rate.toFixed(2)}/page`;
         }
 
-        ['copies', 'paperSize', 'mediaType', 'border', 'colorMode'].forEach(id => {
-            document.getElementById(id).addEventListener('change', recalc);
-            document.getElementById(id).addEventListener('input', recalc);
+        function setLayout(layout) {
+            activeLayout = layout;
+            ['btnLayout1', 'btnLayoutFull', 'btnLayout2tb', 'btnLayout2lr', 'btnLayout4', 'btnLayoutCustom'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.className = "p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2";
+            });
+
+            const map = {
+                '1_photo': 'btnLayout1',
+                '1_full': 'btnLayoutFull',
+                '2_tb': 'btnLayout2tb',
+                '2_lr': 'btnLayout2lr',
+                '4_grid': 'btnLayout4',
+                'custom': 'btnLayoutCustom'
+            };
+            if (map[layout]) {
+                document.getElementById(map[layout]).className = "p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2";
+            }
+            renderPreviewLayout();
+        }
+
+        function setFit(mode) {
+            fitMode = mode;
+            ['fitContain', 'fitCover', 'fitFill'].forEach(id => {
+                document.getElementById(id).className = "px-2 py-1 rounded text-[10px] font-semibold text-zinc-400";
+            });
+            if (mode === 'contain') document.getElementById('fitContain').className = "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white";
+            if (mode === 'cover') document.getElementById('fitCover').className = "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white";
+            if (mode === 'fill') document.getElementById('fitFill').className = "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white";
+            renderPreviewLayout();
+        }
+
+        function rotateImage() {
+            rotationAngle = (rotationAngle + 90) % 360;
+            document.getElementById('rotateLabel').textContent = `${rotationAngle}°`;
+            renderPreviewLayout();
+        }
+
+        document.getElementById('zoomSlider').addEventListener('input', (e) => {
+            zoomScale = e.target.value / 100;
+            document.getElementById('zoomLabel').textContent = `${e.target.value}%`;
+            renderPreviewLayout();
         });
 
-        function handleFile(file) {
+        function clearSlot() {
+            selectedFile = null;
+            cachedDataUrl = null;
+            document.getElementById('imageFileInput').value = '';
+            document.getElementById('docFileInput').value = '';
+            document.getElementById('previewSlot').innerHTML = `<span class="text-[10px] text-slate-400 text-center px-4">Upload an image to preview layout</span>`;
+        }
+
+        function handleFileSelection(file) {
             if (!file) return;
             selectedFile = file;
-            document.getElementById('fileName').textContent = file.name;
-            const r = new FileReader();
-            r.onload = e => {
-                document.getElementById('previewImg').src = e.target.result;
-                document.getElementById('previewCard').classList.remove('hidden');
+            const reader = new FileReader();
+            reader.onload = () => {
+                cachedDataUrl = reader.result;
+                renderPreviewLayout();
             };
-            r.readAsDataURL(file);
+            reader.readAsDataURL(file);
         }
 
-        document.getElementById('fileInput').addEventListener('change', e => handleFile(e.target.files[0]));
-        document.getElementById('cameraInput').addEventListener('change', e => handleFile(e.target.files[0]));
-        document.getElementById('removeFile').addEventListener('click', () => {
-            selectedFile = null;
-            document.getElementById('fileInput').value = '';
-            document.getElementById('cameraInput').value = '';
-            document.getElementById('previewCard').classList.add('hidden');
-        });
+        document.getElementById('imageFileInput').addEventListener('change', (e) => handleFileSelection(e.target.files[0]));
+        document.getElementById('docFileInput').addEventListener('change', (e) => handleFileSelection(e.target.files[0]));
 
-        document.getElementById('canonForm').addEventListener('submit', async e => {
-            e.preventDefault();
-            if (!selectedFile) return alert('Select or scan an image first');
+        function renderPreviewLayout() {
+            if (!cachedDataUrl) return;
+
+            const slot = document.getElementById('previewSlot');
+            const bwClass = (selectedColorMode === 'bw') ? 'is-bw' : '';
+            const imgTag = `<img src="${cachedDataUrl}" style="object-fit:${fitMode}; transform:rotate(${rotationAngle}deg) scale(${zoomScale}); width:100%; height:100%;" class="transition duration-150 rounded-xs ${bwClass}">`;
+
+            if (activeLayout === 'passport') {
+                slot.innerHTML = `<div class="grid grid-cols-4 grid-rows-2 gap-1 w-full h-full p-1">${Array(8).fill(`<div class="overflow-hidden border border-slate-200 rounded-xs flex items-center justify-center">${imgTag}</div>`).join('')}</div>`;
+            } else if (activeLayout === '2_tb') {
+                slot.innerHTML = `<div class="grid grid-rows-2 gap-1.5 w-full h-full p-1"><div class="overflow-hidden border border-slate-200 rounded-xs">${imgTag}</div><div class="overflow-hidden border border-slate-200 rounded-xs">${imgTag}</div></div>`;
+            } else if (activeLayout === '2_lr') {
+                slot.innerHTML = `<div class="grid grid-cols-2 gap-1.5 w-full h-full p-1"><div class="overflow-hidden border border-slate-200 rounded-xs">${imgTag}</div><div class="overflow-hidden border border-slate-200 rounded-xs">${imgTag}</div></div>`;
+            } else if (activeLayout === '4_grid') {
+                slot.innerHTML = `<div class="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full p-1">${Array(4).fill(`<div class="overflow-hidden border border-slate-200 rounded-xs">${imgTag}</div>`).join('')}</div>`;
+            } else {
+                slot.innerHTML = `<div class="w-full h-full overflow-hidden flex items-center justify-center">${imgTag}</div>`;
+            }
+        }
+
+        async function submitPrintOrder() {
+            if (!selectedFile) return alert('Please upload an image or document first!');
+
+            const copies = document.getElementById('copiesCount').value;
+            let rate = (selectedColorMode === 'bw') ? 
+                ((selectedPrintSide === 'double') ? config.rates.bw_double : config.rates.bw_single) : 
+                ((selectedPrintSide === 'double') ? config.rates.color_double : config.rates.color_single);
+            
+            const total = (rate * copies).toFixed(2);
 
             const fd = new FormData();
             fd.append('file', selectedFile);
-            fd.append('copies', document.getElementById('copies').value);
-            fd.append('paper_size', document.getElementById('paperSize').value);
-            fd.append('media_type', document.getElementById('mediaType').value);
-            fd.append('border', document.getElementById('border').value);
-            fd.append('color_mode', document.getElementById('colorMode').value);
+            fd.append('layout', activeLayout);
+            fd.append('copies', copies);
+            fd.append('color_mode', selectedColorMode);
+            fd.append('print_side', selectedPrintSide);
+            fd.append('total_price', total);
 
             const res = await fetch('/upload', { method: 'POST', body: fd });
             const data = await res.json();
             if (res.ok) {
-                currentJobId = data.job.id;
-                document.getElementById('trackerOrderId').textContent = `Order #${currentJobId}`;
-                document.getElementById('trackerModal').classList.remove('hidden');
-                pollJobProgress(currentJobId);
-            } else {
-                alert(data.error || 'Upload error');
-            }
-        });
+                activeJobId = data.job.id;
+                document.getElementById('orderIdBadge').textContent = `Order #${activeJobId}`;
+                document.getElementById('modalPrice').textContent = `₹${total}`;
 
-        function pollJobProgress(jobId) {
+                const upiString = `upi://pay?pa=${config.upi_id}&pn=${encodeURIComponent(config.payee_name)}&am=${total}&cu=INR`;
+                const qrel = document.getElementById('qrcode');
+                qrel.innerHTML = '';
+                new QRCode(qrel, { text: upiString, width: 130, height: 130 });
+
+                document.getElementById('payModal').classList.remove('hidden');
+                pollProgress(activeJobId);
+            }
+        }
+
+        function pollProgress(jobId) {
             if (pollTimer) clearInterval(pollTimer);
             pollTimer = setInterval(async () => {
                 const res = await fetch(`/api/job/${jobId}`);
                 if (!res.ok) return;
                 const job = await res.json();
 
-                const statusEl = document.getElementById('trackerStatus');
-                const descEl = document.getElementById('trackerDesc');
-                const step1 = document.getElementById('step1');
-                const step2 = document.getElementById('step2');
-                const step3 = document.getElementById('step3');
-                const bar1 = document.getElementById('bar1');
-                const bar2 = document.getElementById('bar2');
-                const closeBtn = document.getElementById('closeTrackerBtn');
+                const circle = document.getElementById('statusCircle');
+                const msg = document.getElementById('statusMessage');
+                const hint = document.getElementById('statusHint');
+                const closeBtn = document.getElementById('closeModalBtn');
 
                 if (job.print_status === 'Waiting') {
-                    statusEl.textContent = 'Waiting for Payment Approval...';
-                    descEl.textContent = 'Show UPI transaction confirmation to counter.';
-                    step1.className = 'h-3 w-3 rounded-full bg-cyan-500 animate-ping';
+                    circle.className = 'h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping';
+                    msg.textContent = 'Waiting for counter approval...';
+                    hint.textContent = 'Show transaction verification at the counter.';
                 } else if (job.print_status === 'Printing') {
-                    statusEl.textContent = 'Printing Document...';
-                    descEl.textContent = 'Canon G3010 is printing your page now.';
-                    step1.className = 'h-3 w-3 rounded-full bg-cyan-500';
-                    bar1.className = 'h-0.5 w-8 bg-cyan-500';
-                    step2.className = 'h-3 w-3 rounded-full bg-amber-400 animate-pulse';
+                    circle.className = 'h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse';
+                    msg.textContent = 'Printing Document...';
+                    hint.textContent = 'Your page is actively rolling out of Canon G3010.';
                 } else if (job.print_status === 'Completed') {
-                    statusEl.textContent = 'Print Completed!';
-                    descEl.textContent = 'Please collect your sheets from the tray.';
-                    step1.className = 'h-3 w-3 rounded-full bg-cyan-500';
-                    bar1.className = 'h-0.5 w-8 bg-cyan-500';
-                    step2.className = 'h-3 w-3 rounded-full bg-cyan-500';
-                    bar2.className = 'h-0.5 w-8 bg-cyan-500';
-                    step3.className = 'h-3 w-3 rounded-full bg-emerald-400';
+                    circle.className = 'h-2.5 w-2.5 rounded-full bg-emerald-500';
+                    msg.textContent = 'Print Complete!';
+                    hint.textContent = 'Collect your sheets from the output tray.';
                     closeBtn.classList.remove('hidden');
                     clearInterval(pollTimer);
                 }
-            }, 2500);
+            }, 2000);
         }
 
-        document.getElementById('closeTrackerBtn').addEventListener('click', () => {
-            document.getElementById('trackerModal').classList.add('hidden');
-            document.getElementById('removeFile').click();
-            document.getElementById('closeTrackerBtn').classList.add('hidden');
-        });
+        function closePaymentModal() {
+            document.getElementById('payModal').classList.add('hidden');
+            document.getElementById('closeModalBtn').classList.add('hidden');
+            clearSlot();
+        }
 
         init();
     </script>
