@@ -1,11 +1,13 @@
 import os
 import json
 import socket
-import subprocess
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from PIL import Image
+
+# Import the native print bridge
+import print_bridge
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -45,7 +47,6 @@ def load_settings():
     try:
         with open(CONFIG_FILE, 'r') as f:
             data = json.load(f)
-            # Ensure any new sizes exist in loaded config
             for k, v in DEFAULT_CONFIG['rates'].items():
                 if k not in data.get('rates', {}):
                     data.setdefault('rates', {})[k] = v
@@ -74,12 +75,10 @@ def check_printer_socket(ip, port=9100, timeout=1.5):
 def calculate_amount(paper_size, media_type, color_mode, copies):
     rates = SETTINGS.get('rates', DEFAULT_CONFIG['rates'])
     base_rate = float(rates.get(paper_size, rates.get('A4', 3.0)))
-    
     if color_mode == 'Color':
         base_rate += float(rates.get('color_addon', 7.0))
-    if 'Photo' in media_type or 'Glossy' in media_type or 'Luster' in media_type:
+    if any(k in media_type for k in ['Photo', 'Glossy', 'Luster']):
         base_rate += float(rates.get('photo_paper_addon', 10.0))
-        
     return round(base_rate * int(copies), 2)
 
 @app.route('/')
@@ -123,33 +122,15 @@ def get_printer_status():
 
 @app.route('/api/printer/test_blank', methods=['POST'])
 def test_blank_page():
-    """Generates a blank printable canvas and sends it to the printer."""
-    ip = SETTINGS.get('printer_ip', '192.168.1.16')
     test_path = os.path.join(app.config['UPLOAD_FOLDER'], 'blank_test.jpg')
-    
-    # Generate an A4 empty white image (1240 x 1754 px at 150 DPI) with a small test banner
     img = Image.new('RGB', (1240, 1754), color=(255, 255, 255))
     img.save(test_path, 'JPEG', quality=90)
     
-    # Attempt printing via lp (CUPS) if installed, otherwise try IPP
-    try:
-        cmd = subprocess.run(['lp', '-d', 'Canon_G3010', test_path], capture_output=True, text=True)
-        if cmd.returncode == 0:
-            return jsonify({'success': True, 'method': 'CUPS (lp)', 'output': cmd.stdout})
-    except Exception:
-        pass
-
-    # Fallback direct socket command (Form Feed byte \x0c) to test paper ejection
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5.0)
-        sock.connect((ip, 9100))
-        # Send UEL (Universal Exit Language) and Form Feed to prompt blank page feed
-        sock.send(b"\x1b%-12345X@PJL\r\n@PJL ENTER LANGUAGE=PCL\r\n\x0c\x1b%-12345X")
-        sock.close()
-        return jsonify({'success': True, 'method': 'RAW Socket Form-Feed dispatched to 192.168.1.16'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+    ip = SETTINGS.get('printer_ip', '192.168.1.16')
+    success, msg = print_bridge.dispatch_print(test_path, ip, 9100)
+    if success:
+        return jsonify({'success': True, 'method': msg})
+    return jsonify({'success': False, 'error': msg}), 500
 
 @app.route('/upload', methods=['POST'])
 def handle_upload():
@@ -204,35 +185,36 @@ def list_jobs():
 @app.route('/api/jobs/verify_and_print/<int:job_id>', methods=['POST'])
 def verify_and_print(job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
-    if not target: return jsonify({'error': 'Job not found'}), 404
+    if not target:
+        return jsonify({'error': 'Job not found'}), 404
 
     target['payment_status'] = 'Paid'
+    target['print_status'] = 'Printing'
+
     file_path = os.path.join(app.config['UPLOAD_FOLDER'], target['filename'])
-
-    # Try CUPS lp dispatcher first
-    try:
-        res = subprocess.run(['lp', '-d', 'Canon_G3010', file_path], capture_output=True, text=True)
-        if res.returncode == 0:
-            target['print_status'] = 'Completed'
-            return jsonify({'success': True, 'method': 'CUPS'})
-    except Exception:
-        pass
-
-    # Socket RAW dispatch fallback
     ip = SETTINGS.get('printer_ip', '192.168.1.16')
+
+    # Convert to standard JPEG format
+    processed_path = file_path + "_ready.jpg"
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(5.0)
-        sock.connect((ip, 9100))
-        with open(file_path, 'rb') as f:
-            while chunk := f.read(4096):
-                sock.send(chunk)
-        sock.close()
+        with Image.open(file_path) as im:
+            if target['color_mode'] == 'Monochrome':
+                im = im.convert('L')
+            else:
+                im = im.convert('RGB')
+            im.save(processed_path, 'JPEG', quality=95)
+        print_target = processed_path
+    except Exception:
+        print_target = file_path
+
+    # Trigger through the print bridge
+    success, msg = print_bridge.dispatch_print(print_target, ip, 9100)
+    if success:
         target['print_status'] = 'Completed'
-        return jsonify({'success': True, 'method': 'RAW Socket'})
-    except Exception as e:
+        return jsonify({'success': True, 'method': msg})
+    else:
         target['print_status'] = 'Failed'
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': msg}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
