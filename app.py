@@ -3,6 +3,7 @@ import re
 import io
 import json
 import socket
+import urllib.request
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
@@ -16,7 +17,7 @@ os.makedirs('static', exist_ok=True)
 
 CONFIG_FILE = 'settings.json'
 DEFAULT_CONFIG = {
-    'shop_name': 'Satya Xerox',
+    'shop_name': 'piyush Xerox',
     'tagline': 'ONLINE PRINT PORTAL',
     'upi_id': 'piyush@upi',
     'payee_name': 'PIYUSH',
@@ -69,7 +70,7 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-# ================= DIRECT PRINT ENGINE =================
+# ================= DIRECT PRINT ENGINE (AirPrint/IPP) =================
 def compile_job_image(job):
     """Compiles the uploaded images into the requested grid layout."""
     filenames = job.get('filenames', [])
@@ -128,17 +129,44 @@ def compile_job_image(job):
 
     return canvas
 
-def send_to_printer(pdf_bytes, ip, port=9100):
-    """Sends the PDF byte stream directly to the printer's RAW port."""
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(15.0)
-        sock.connect((ip, int(port)))
-        sock.sendall(pdf_bytes)
-        sock.close()
-        return True, "Transmitted to printer"
-    except Exception as e:
-        return False, str(e)
+def send_to_printer(img_bytes, ip):
+    """Sends the compiled JPEG using the Apple AirPrint (IPP) protocol on Port 631."""
+    endpoints = ['/ipp/print', '/ipp', '/ipp/printer']
+    last_error = ""
+    
+    for ep in endpoints:
+        url = f"http://{ip}:631{ep}"
+        
+        # IPP Headers (Operation: Print-Job 0x0002)
+        ipp_req = bytearray([0x02, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x01])
+        
+        def add_attr(tag, name, value):
+            ipp_req.append(tag)
+            ipp_req.extend(len(name).to_bytes(2, 'big'))
+            ipp_req.extend(name.encode())
+            val_b = value.encode() if isinstance(value, str) else value
+            ipp_req.extend(len(val_b).to_bytes(2, 'big'))
+            ipp_req.extend(val_b)
+            
+        add_attr(0x47, 'attributes-charset', 'utf-8')
+        add_attr(0x48, 'attributes-natural-language', 'en')
+        add_attr(0x45, 'printer-uri', f'ipp://{ip}:631{ep}')
+        add_attr(0x42, 'requesting-user-name', 'AdminXerox')
+        add_attr(0x49, 'document-format', 'image/jpeg')  # We MUST send JPEG, not PDF
+        ipp_req.append(0x03)
+        
+        payload = bytes(ipp_req) + img_bytes
+        
+        try:
+            req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/ipp'})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status in [200, 201]:
+                    return True, "AirPrint IPP Success!"
+        except Exception as e:
+            last_error = str(e)
+            continue
+            
+    return False, f"Printer rejected AirPrint format: {last_error}"
 
 def secure_shred(job):
     """Permanently deletes customer files after print completes."""
@@ -247,14 +275,14 @@ def verify_and_print(job_id):
         if not canvas:
             return jsonify({'success': False, 'error': 'Failed to process images.'}), 200
 
-        # Convert layout to standard PDF in memory
-        pdf_buf = io.BytesIO()
-        canvas.save(pdf_buf, format='PDF', resolution=300)
-        pdf_bytes = pdf_buf.getvalue()
+        # Convert layout to standard High-Quality JPEG in memory (Not PDF)
+        img_buf = io.BytesIO()
+        canvas.save(img_buf, format='JPEG', quality=95, optimize=True)
+        img_bytes = img_buf.getvalue()
 
-        # Send copies directly to Port 9100
+        # Send copies directly to the printer using AirPrint/IPP
         for _ in range(int(target.get('copies', 1))):
-            success, msg = send_to_printer(pdf_bytes, ip)
+            success, msg = send_to_printer(img_bytes, ip)
             if not success:
                 target['print_status'] = 'Failed'
                 return jsonify({'success': False, 'error': msg}), 200
