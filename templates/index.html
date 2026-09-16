@@ -24,7 +24,7 @@
                     <p id="shopSub" class="text-[9px] tracking-wider text-zinc-400 font-semibold uppercase">ONLINE PRINT PORTAL</p>
                 </div>
             </div>
-            <button type="button" id="modeSwitchBtn" onclick="togglePortalMode()" class="bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-1.5 transition">
+            <button type="button" onclick="togglePortalMode()" class="bg-[#2563EB] hover:bg-blue-600 text-white text-xs font-semibold px-3 py-1.5 rounded-xl shadow-lg shadow-blue-600/20 flex items-center gap-1.5 transition">
                 <span id="switchBtnIcon">📄</span>
                 <span id="switchBtnText">Print Document</span>
             </button>
@@ -64,9 +64,9 @@
                 <span id="selectedCountBadge" class="text-[10px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800 px-2 py-1 rounded-lg">0 Images Added</span>
             </div>
 
-            <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-6 text-center cursor-pointer transition group">
+            <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-6 text-center cursor-pointer transition">
                 <div class="flex flex-col items-center justify-center gap-1.5">
-                    <svg class="w-7 h-7 text-blue-500 group-hover:scale-110 transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    <span class="text-2xl text-blue-500">🖼️</span>
                     <span class="text-xs font-bold text-zinc-200">Tap to select multiple images</span>
                 </div>
                 <input type="file" id="imageFileInput" accept="image/*" multiple class="hidden">
@@ -92,8 +92,11 @@
                     <button type="button" onclick="setLayout('4_grid')" id="btnLayout4" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
                         <div class="w-4 h-5 border border-zinc-700 rounded-sm grid grid-cols-2 gap-0.5 p-0.5"><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div></div><span class="text-[11px]">4 Images (2x2)</span>
                     </button>
-                    <button type="button" onclick="setLayout('custom')" id="btnLayoutCustom" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border border-dashed border-cyan-500 rounded-sm"></div><span class="text-[11px]">Custom Grid ✦</span>
+                    <button type="button" onclick="setLayout('passport')" id="btnLayoutPassport" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
+                        <div class="w-4 h-5 border border-purple-500 rounded-sm grid grid-cols-2 gap-0.5 p-0.5"><div class="bg-purple-500"></div><div class="bg-purple-500"></div><div class="bg-purple-500"></div><div class="bg-purple-500"></div></div><span class="text-[11px]">8 Passport</span>
+                    </button>
+                    <button type="button" onclick="setLayout('custom')" id="btnLayoutCustom" class="col-span-2 p-2.5 rounded-xl border border-dashed border-cyan-500 bg-zinc-950/60 text-cyan-400 flex justify-center items-center gap-2">
+                        <span class="text-[11px] font-bold tracking-widest uppercase">✦ Build Custom Grid Matrix ✦</span>
                     </button>
                 </div>
             </div>
@@ -102,30 +105,51 @@
                 <div class="grid grid-cols-2 gap-3 text-xs">
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Rows (Vertical)</label>
-                        <select id="customRows" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Row</option><option value="2">2 Rows</option><option value="3" selected>3 Rows</option><option value="4">4 Rows</option></select>
+                        <select id="customRows" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Row</option><option value="2">2 Rows</option><option value="3" selected>3 Rows</option><option value="4">4 Rows</option><option value="5">5 Rows</option><option value="6">6 Rows</option></select>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Columns (Horizontal)</label>
-                        <select id="customCols" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Column</option><option value="2">2 Columns</option><option value="3" selected>3 Columns</option><option value="4">4 Columns</option></select>
+                        <select id="customCols" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Column</option><option value="2">2 Columns</option><option value="3" selected>3 Columns</option><option value="4">4 Columns</option><option value="5">5 Columns</option><option value="6">6 Columns</option></select>
                     </div>
                 </div>
             </div>
 
+            <!-- RESTORED ALL PAPER SIZES & MEDIA TYPES -->
             <div class="border border-zinc-800 rounded-2xl p-3.5 bg-zinc-950/60 space-y-3">
                 <span class="text-[11px] font-bold text-zinc-300 block">Printer Media & Paper Settings:</span>
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div>
+                        <label class="text-[10px] font-bold text-zinc-400 block mb-1">Paper Size</label>
                         <select id="paperSizeSelect" onchange="recalc()" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="A4" selected>A4 Standard</option><option value="4x6">4"x6" Photo</option><option value="5x7">5"x7" Photo</option>
+                            <option value="A4" selected>A4 Standard</option>
+                            <option value="Letter">Letter 8.5"x11"</option>
+                            <option value="Legal">Legal 8.5"x14"</option>
+                            <option value="A5">A5</option>
+                            <option value="B5">B5</option>
+                            <option value="4x6">4"x6" Photo</option>
+                            <option value="5x7">5"x7" Photo</option>
+                            <option value="Card">Card Size</option>
                         </select>
                     </div>
                     <div>
+                        <label class="text-[10px] font-bold text-zinc-400 block mb-1">Media Type</label>
                         <select id="mediaTypeSelect" onchange="recalc()" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="Plain Paper" selected>Plain Paper</option><option value="Glossy Photo Paper">Glossy Photo</option><option value="Matte Photo Paper">Matte Photo</option>
+                            <option value="Plain Paper" selected>Plain Paper</option>
+                            <option value="Photo Paper Plus Glossy II">Photo Paper Plus Glossy II</option>
+                            <option value="Photo Paper Pro Luster">Photo Paper Pro Luster</option>
+                            <option value="Photo Paper Plus Semi-gloss">Photo Paper Plus Semi-gloss</option>
+                            <option value="Glossy Photo Paper">Glossy Photo Paper</option>
+                            <option value="Matte Photo Paper">Matte Photo Paper</option>
+                            <option value="High Resolution Paper">High Resolution Paper</option>
                         </select>
                     </div>
                 </div>
+                
                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/80">
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="setFit('contain')" id="fitContain" class="px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white">Fit</button>
+                        <button type="button" onclick="setFit('cover')" id="fitCover" class="px-2 py-1 rounded text-[10px] font-semibold text-zinc-400">Fill</button>
+                    </div>
                     <button type="button" onclick="rotateImage()" class="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 text-[11px] font-semibold text-zinc-300">↻ Rotate</button>
                     <button type="button" onclick="clearSlot()" class="text-xs text-rose-400 font-semibold border border-rose-950 bg-rose-950/30 px-2.5 py-1.5 rounded-xl">🗑 Clear</button>
                 </div>
@@ -145,11 +169,9 @@
 
         <!-- DOCUMENT MODE -->
         <div id="screenDocument" class="hidden bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
-            <div>
-                <h2 class="text-base font-bold text-white">Upload Document</h2>
-                <p class="text-xs text-zinc-400">Select files to send to printer</p>
-            </div>
+            <div><h2 class="text-base font-bold text-white">Upload Document</h2></div>
             <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-8 text-center cursor-pointer transition">
+                <span class="text-2xl text-blue-500">📄</span>
                 <span class="text-xs font-bold text-zinc-200 block mt-2">Tap or drag files here</span>
                 <input type="file" id="docFileInput" accept="image/*,.pdf" multiple class="hidden">
             </label>
@@ -222,7 +244,7 @@
 
     <script>
         let currentScreen = 'images', stagedFiles = [], stagedDataUrls = [];
-        let config = {}, activeLayout = '1_photo', rotationAngle = 0, selectedColorMode = 'bw', selectedPrintSide = 'single';
+        let config = {}, activeLayout = '1_photo', rotationAngle = 0, selectedColorMode = 'bw', selectedPrintSide = 'single', fitMode = 'contain';
         let activeJobId = null, pollTimer = null;
 
         async function init() {
@@ -250,8 +272,7 @@
 
         function adjustCopies(delta) {
             const el = document.getElementById('copiesCount');
-            let val = Math.max(1, parseInt(el.value) + delta);
-            el.value = val;
+            el.value = Math.max(1, parseInt(el.value) + delta);
             recalc();
         }
 
@@ -270,9 +291,18 @@
                 ? (selectedPrintSide === 'double' ? (rates.bw_double||5) : (rates.bw_single||2)) 
                 : (selectedPrintSide === 'double' ? (rates.color_double||0.5) : (rates.color_single||5));
             
+            const paperRates = config.paper_rates || {};
+            const mediaRates = config.media_rates || {};
             const layoutRates = config.layout_rates || {};
+
+            const pSize = document.getElementById('paperSizeSelect')?.value || 'A4';
+            const mType = document.getElementById('mediaTypeSelect')?.value || 'Plain Paper';
+            
+            const sizeSur = parseFloat(paperRates[pSize]) || 0;
+            const mediaSur = parseFloat(mediaRates[mType]) || 0;
             const layoutSur = currentScreen === 'images' ? (parseFloat(layoutRates[activeLayout]) || 0) : 0;
-            const unitPrice = baseRate + layoutSur;
+            
+            const unitPrice = baseRate + sizeSur + mediaSur + layoutSur;
             const total = (unitPrice * copies).toFixed(2);
 
             document.getElementById('priceDisplay').textContent = `₹${total}`;
@@ -281,45 +311,71 @@
 
         function setLayout(layout) {
             activeLayout = layout;
-            ['btnLayout1','btnLayoutFull','btnLayout2tb','btnLayout2lr','btnLayout4','btnLayoutCustom'].forEach(id => {
+            ['btnLayout1','btnLayoutFull','btnLayout2tb','btnLayout2lr','btnLayout4','btnLayoutPassport','btnLayoutCustom'].forEach(id => {
                 if(document.getElementById(id)) document.getElementById(id).className = "p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2";
+                if(id==='btnLayoutCustom') document.getElementById(id).className = "col-span-2 p-2.5 rounded-xl border border-dashed border-cyan-500 bg-zinc-950/60 text-cyan-400 flex justify-center items-center gap-2";
             });
-            const maps = {'1_photo':'btnLayout1','1_full':'btnLayoutFull','2_tb':'btnLayout2tb','2_lr':'btnLayout2lr','4_grid':'btnLayout4','custom':'btnLayoutCustom'};
-            if(maps[layout]) document.getElementById(maps[layout]).className = "p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2";
+            const maps = {'1_photo':'btnLayout1','1_full':'btnLayoutFull','2_tb':'btnLayout2tb','2_lr':'btnLayout2lr','4_grid':'btnLayout4','passport':'btnLayoutPassport','custom':'btnLayoutCustom'};
+            
+            if(layout !== 'custom' && maps[layout]) {
+                document.getElementById(maps[layout]).className = "p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2";
+            }
             
             document.getElementById('customGridSettings').style.display = layout === 'custom' ? 'block' : 'none';
             renderPreviewLayout();
             recalc();
         }
 
-        function updateCustomMatrix() { renderPreviewLayout(); }
-
-        function rotateImage() {
-            rotationAngle = (rotationAngle + 90) % 360;
+        function setFit(mode) {
+            fitMode = mode;
+            document.getElementById('fitContain').className = mode === 'contain' ? "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white" : "px-2 py-1 rounded text-[10px] font-semibold text-zinc-400";
+            document.getElementById('fitCover').className = mode === 'cover' ? "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white" : "px-2 py-1 rounded text-[10px] font-semibold text-zinc-400";
             renderPreviewLayout();
         }
+
+        function updateCustomMatrix() { renderPreviewLayout(); }
+        function rotateImage() { rotationAngle = (rotationAngle + 90) % 360; renderPreviewLayout(); }
 
         function clearSlot() {
             stagedFiles = []; stagedDataUrls = [];
             document.getElementById('imageFileInput').value = '';
+            document.getElementById('docFileInput').value = '';
+            document.getElementById('stagedThumbs').classList.add('hidden');
+            document.getElementById('selectedCountBadge').textContent = '0 Images Added';
             document.getElementById('previewSlot').innerHTML = `<span class="text-[10px] text-slate-400">Upload an image to preview layout</span>`;
         }
 
-        document.getElementById('imageFileInput').addEventListener('change', e => {
+        document.getElementById('imageFileInput').addEventListener('change', handleUploadFiles);
+        document.getElementById('docFileInput').addEventListener('change', handleUploadFiles);
+
+        function handleUploadFiles(e) {
             stagedFiles = Array.from(e.target.files);
             if (!stagedFiles.length) return;
             stagedDataUrls = [];
+            document.getElementById('selectedCountBadge').textContent = `${stagedFiles.length} Image(s) Added`;
+            
+            const thumbContainer = document.getElementById('stagedThumbs');
+            thumbContainer.innerHTML = '';
+            thumbContainer.classList.remove('hidden');
+
             stagedFiles.forEach((f, idx) => {
                 const r = new FileReader();
-                r.onload = ev => { stagedDataUrls.push(ev.target.result); if(idx===0) renderPreviewLayout(); };
+                r.onload = ev => { 
+                    stagedDataUrls.push(ev.target.result); 
+                    const img = document.createElement('img');
+                    img.src = ev.target.result;
+                    img.className = "h-12 w-12 rounded-lg object-cover border border-zinc-700 shrink-0";
+                    thumbContainer.appendChild(img);
+                    if(idx===0) renderPreviewLayout(); 
+                };
                 r.readAsDataURL(f);
             });
-        });
+        }
 
         function renderPreviewLayout() {
             if (!stagedDataUrls.length) return;
             const bwClass = selectedColorMode === 'bw' ? 'is-bw' : '';
-            const mk = (url) => `<img src="${url}" style="object-fit:contain; transform:rotate(${rotationAngle}deg); width:100%; height:100%;" class="${bwClass}">`;
+            const mk = (url) => `<img src="${url}" style="object-fit:${fitMode}; transform:rotate(${rotationAngle}deg); width:100%; height:100%;" class="${bwClass}">`;
             const first = stagedDataUrls[0];
             const slot = document.getElementById('previewSlot');
 
@@ -329,10 +385,14 @@
                 let html = '';
                 for (let i=0; i < r*c; i++) html += `<div class="border border-slate-200 p-0.5">${mk(stagedDataUrls[i%stagedDataUrls.length] || first)}</div>`;
                 slot.innerHTML = `<div class="grid gap-1 w-full h-full" style="grid-template-columns: repeat(${c}, 1fr); grid-template-rows: repeat(${r}, 1fr);">${html}</div>`;
+            } else if (activeLayout === 'passport') {
+                slot.innerHTML = `<div class="grid grid-cols-4 grid-rows-2 gap-1 w-full h-full">${Array(8).fill(0).map(()=>`<div>${mk(first)}</div>`).join('')}</div>`;
             } else if (activeLayout === '4_grid') {
                 slot.innerHTML = `<div class="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">${Array(4).fill(0).map((_,i)=>`<div>${mk(stagedDataUrls[i]||first)}</div>`).join('')}</div>`;
             } else if (activeLayout === '2_tb') {
                 slot.innerHTML = `<div class="grid grid-rows-2 gap-1 w-full h-full"><div>${mk(first)}</div><div>${mk(stagedDataUrls[1]||first)}</div></div>`;
+            } else if (activeLayout === '2_lr') {
+                slot.innerHTML = `<div class="grid grid-cols-2 gap-1 w-full h-full"><div>${mk(first)}</div><div>${mk(stagedDataUrls[1]||first)}</div></div>`;
             } else {
                 slot.innerHTML = `<div>${mk(first)}</div>`;
             }
@@ -345,9 +405,15 @@
             const fd = new FormData();
             stagedFiles.forEach(f => fd.append('files', f));
             fd.append('layout', activeLayout);
+            if (activeLayout === 'custom') {
+                fd.append('custom_rows', document.getElementById('customRows').value);
+                fd.append('custom_cols', document.getElementById('customCols').value);
+            }
             fd.append('copies', document.getElementById('copiesCount').value);
             fd.append('color_mode', selectedColorMode);
             fd.append('print_side', selectedPrintSide);
+            fd.append('paper_size', document.getElementById('paperSizeSelect')?.value || 'A4');
+            fd.append('media_type', document.getElementById('mediaTypeSelect')?.value || 'Plain Paper');
             fd.append('total_price', priceText);
 
             const res = await fetch('/upload', { method: 'POST', body: fd });
@@ -370,11 +436,9 @@
                 const res = await fetch(`/api/job/${jobId}`);
                 if (!res.ok) return;
                 const job = await res.json();
-                if (job.print_status === 'Printing') {
-                    document.getElementById('statusMessage').textContent = 'Printing Document...';
-                    document.getElementById('statusCircle').className = 'h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse';
-                } else if (job.print_status === 'Completed') {
-                    document.getElementById('statusMessage').textContent = 'Print Complete!';
+                
+                if (job.print_status === 'Printing' || job.print_status === 'Completed') {
+                    document.getElementById('statusMessage').textContent = 'Print Dispatched!';
                     document.getElementById('statusCircle').className = 'h-2.5 w-2.5 rounded-full bg-emerald-500';
                     document.getElementById('closeModalBtn').classList.remove('hidden');
                     clearInterval(pollTimer);

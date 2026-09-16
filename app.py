@@ -1,6 +1,8 @@
 import os
 import re
+import io
 import json
+import socket
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
@@ -21,9 +23,23 @@ DEFAULT_CONFIG = {
     'printer_ip': '192.168.1.15',
     'logo_url': '/static/logo.png',
     'rates': {'bw_single': 2.0, 'bw_double': 5.0, 'color_single': 5.0, 'color_double': 0.50},
-    'paper_rates': {'A4': 0.0, 'Letter': 0.0, 'Legal': 1.0, 'A5': 0.0, 'B5': 0.0, '4x6': 10.0, '5x7': 15.0, 'Card': 5.0},
-    'layout_rates': {'1_photo': 0.0, '1_full': 0.0, '2_tb': 2.0, '2_lr': 2.0, '4_grid': 4.0, 'passport': 10.0, 'custom': 5.0},
-    'media_rates': {'Plain Paper': 0.0, 'Photo Paper Plus Glossy II': 10.0, 'Matte Photo Paper': 10.0}
+    'paper_rates': {
+        'A4': 0.0, 'Letter': 0.0, 'Legal': 1.0, 'A5': 0.0, 
+        'B5': 0.0, '4x6': 10.0, '5x7': 15.0, 'Card': 5.0
+    },
+    'layout_rates': {
+        '1_photo': 0.0, '1_full': 0.0, '2_tb': 2.0, '2_lr': 2.0, 
+        '4_grid': 4.0, 'passport': 10.0, 'custom': 5.0
+    },
+    'media_rates': {
+        'Plain Paper': 0.0,
+        'Photo Paper Plus Glossy II': 10.0,
+        'Photo Paper Pro Luster': 12.0,
+        'Photo Paper Plus Semi-gloss': 10.0,
+        'Glossy Photo Paper': 8.0,
+        'Matte Photo Paper': 10.0,
+        'High Resolution Paper': 5.0
+    }
 }
 
 def load_settings():
@@ -53,27 +69,21 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-# ================= RENDER ENGINE =================
-def build_print_sheet(job):
-    """Compiles the uploaded images into the requested grid layout on an A4 canvas."""
+# ================= DIRECT PRINT ENGINE =================
+def compile_job_image(job):
+    """Compiles the uploaded images into the requested grid layout."""
     filenames = job.get('filenames', [])
-    if not filenames:
-        return None, None
-
-    # If it is a PDF document, bypass image processing and serve PDF directly
-    if job['primary_file'].lower().endswith('.pdf'):
-        return job['primary_file'], 'pdf'
+    if not filenames: return None
 
     dimensions = {
         'A4': (2480, 3508), 'Letter': (2550, 3300), 'Legal': (2550, 4200),
         '4x6': (1200, 1800), '5x7': (1500, 2100), 'Card': (651, 1074)
     }
     canvas_w, canvas_h = dimensions.get(job.get('paper_size', 'A4'), (2480, 3508))
-    
     canvas = Image.new('RGB', (canvas_w, canvas_h), color=(255, 255, 255))
+    
     layout = job.get('layout', '1_photo')
     rows, cols = 1, 1
-    
     if layout == '1_full': rows, cols = 1, 1
     elif layout == '2_tb': rows, cols = 2, 1
     elif layout == '2_lr': rows, cols = 1, 2
@@ -81,8 +91,7 @@ def build_print_sheet(job):
     elif layout == 'passport': rows, cols = 4, 2
     elif 'Custom' in layout:
         m = re.search(r'(\d+)x(\d+)', layout)
-        if m:
-            rows, cols = int(m.group(1)), int(m.group(2))
+        if m: rows, cols = int(m.group(1)), int(m.group(2))
 
     margin = 80
     usable_w = canvas_w - (margin * 2)
@@ -104,28 +113,38 @@ def build_print_sheet(job):
         except Exception:
             pass
 
-    if not images:
-        return None, None
+    if not images: return None
 
     img_idx = 0
     for r in range(rows):
         for c in range(cols):
             src_img = images[img_idx % len(images)]
             img_idx += 1
-            
-            # Maintain aspect ratio within the cell
             cell_img = src_img.copy()
             cell_img.thumbnail((cell_w - 20, cell_h - 20), Image.Resampling.LANCZOS)
-            
             x = margin + (c * cell_w) + (cell_w - cell_img.width) // 2
             y = margin + (r * cell_h) + (cell_h - cell_img.height) // 2
             canvas.paste(cell_img, (x, y))
 
-    out_name = f"compiled_job_{job['id']}.jpg"
-    out_path = os.path.join(app.config['STATIC_FOLDER'], out_name)
-    canvas.save(out_path, format='JPEG', quality=95, optimize=True)
-    
-    return out_name, 'image'
+    return canvas
+
+def send_to_printer(pdf_bytes, ip, port=9100):
+    """Sends the PDF byte stream directly to the printer's RAW port."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(15.0)
+        sock.connect((ip, int(port)))
+        sock.sendall(pdf_bytes)
+        sock.close()
+        return True, "Transmitted to printer"
+    except Exception as e:
+        return False, str(e)
+
+def secure_shred(job):
+    """Permanently deletes customer files after print completes."""
+    for fn in job.get('filenames', []):
+        try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], fn))
+        except: pass
 
 # ================= APP ROUTES =================
 @app.route('/')
@@ -219,45 +238,43 @@ def verify_and_print(job_id):
         return jsonify({'error': 'Job not found'}), 404
 
     target['payment_status'] = 'Paid'
+    target['print_status'] = 'Printing'
+    ip = SETTINGS.get('printer_ip', '192.168.1.15')
 
     try:
-        # Generate the compiled image for the browser to print
-        filename, ftype = build_print_sheet(target)
-        if not filename:
-            return jsonify({'success': False, 'error': 'Failed to process image files.'}), 200
-            
-        target['print_status'] = 'Completed'
-        return jsonify({
-            'success': True, 
-            'file_type': ftype,
-            'url': f"/print_ready/{filename}/{ftype}",
-            'copies': target.get('copies', 1)
-        })
+        # Build the layout image
+        canvas = compile_job_image(target)
+        if not canvas:
+            return jsonify({'success': False, 'error': 'Failed to process images.'}), 200
+
+        # Convert layout to standard PDF in memory
+        pdf_buf = io.BytesIO()
+        canvas.save(pdf_buf, format='PDF', resolution=300)
+        pdf_bytes = pdf_buf.getvalue()
+
+        # Send copies directly to Port 9100
+        for _ in range(int(target.get('copies', 1))):
+            success, msg = send_to_printer(pdf_bytes, ip)
+            if not success:
+                target['print_status'] = 'Failed'
+                return jsonify({'success': False, 'error': msg}), 200
+
+        # Auto-Shred files for privacy
+        secure_shred(target)
+        target['print_status'] = 'Securely Erased'
+        
+        return jsonify({'success': True, 'message': 'Direct Print Dispatched & Shredded'})
     except Exception as e:
+        target['print_status'] = 'Failed'
         return jsonify({'success': False, 'error': str(e)}), 200
 
-# Endpoint that serves the image/PDF with a script that auto-triggers the print dialog
-@app.route('/print_ready/<filename>/<filetype>')
-def print_ready(filename, filetype):
-    if filetype == 'pdf':
-        return f'<script>window.location.href="/uploads/{filename}";</script>'
-        
-    return f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Print Job</title>
-        <style>
-            body, html {{ margin: 0; padding: 0; background: #fff; text-align: center; }}
-            img {{ width: 100vw; height: 100vh; object-fit: contain; }}
-            @page {{ margin: 0; size: auto; }}
-        </style>
-    </head>
-    <body onload="setTimeout(() => {{ window.print(); }}, 500);">
-        <img src="/static/{filename}">
-    </body>
-    </html>
-    """
+@app.route('/api/jobs/secure_delete/<int:job_id>', methods=['POST'])
+def manual_secure_delete(job_id):
+    target = next((j for j in PRINT_JOBS if j['id'] == job_id), None)
+    if target:
+        secure_shred(target)
+        target['print_status'] = 'Securely Erased'
+    return jsonify({'success': True})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
