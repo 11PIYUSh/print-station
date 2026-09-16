@@ -25,6 +25,34 @@ DEFAULT_CONFIG = {
         'bw_double': 5.0,
         'color_single': 5.0,
         'color_double': 0.50
+    },
+    'paper_rates': {
+        'A4': 0.0,
+        'Letter': 0.0,
+        'Legal': 1.0,
+        'A5': 0.0,
+        'B5': 0.0,
+        '4x6': 10.0,
+        '5x7': 15.0,
+        'Card': 5.0
+    },
+    'layout_rates': {
+        '1_photo': 0.0,
+        '1_full': 0.0,
+        '2_tb': 2.0,
+        '2_lr': 2.0,
+        '4_grid': 4.0,
+        'passport': 10.0,
+        'custom': 5.0
+    },
+    'media_rates': {
+        'Plain Paper': 0.0,
+        'Photo Paper Plus Glossy II': 10.0,
+        'Photo Paper Pro Luster': 12.0,
+        'Photo Paper Plus Semi-gloss': 10.0,
+        'Glossy Photo Paper': 8.0,
+        'Matte Photo Paper': 10.0,
+        'High Resolution Paper': 5.0
     }
 }
 
@@ -35,7 +63,15 @@ def load_settings():
         return DEFAULT_CONFIG
     try:
         with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+            data = json.load(f)
+            for k, v in DEFAULT_CONFIG.items():
+                if k not in data:
+                    data[k] = v
+                elif isinstance(v, dict):
+                    for sub_k, sub_v in v.items():
+                        if sub_k not in data[k]:
+                            data[k][sub_k] = sub_v
+            return data
     except Exception:
         return DEFAULT_CONFIG
 
@@ -79,10 +115,16 @@ def update_admin_config():
     for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip']:
         if key in data and str(data[key]).strip():
             SETTINGS[key] = str(data[key]).strip()
+    
     if 'rates' in data:
-        for rk in ['bw_single', 'bw_double', 'color_single', 'color_double']:
-            if rk in data['rates']:
-                SETTINGS['rates'][rk] = float(data['rates'][rk])
+        SETTINGS['rates'].update({k: float(v) for k, v in data['rates'].items()})
+    if 'paper_rates' in data:
+        SETTINGS['paper_rates'].update({k: float(v) for k, v in data['paper_rates'].items()})
+    if 'layout_rates' in data:
+        SETTINGS['layout_rates'].update({k: float(v) for k, v in data['layout_rates'].items()})
+    if 'media_rates' in data:
+        SETTINGS['media_rates'].update({k: float(v) for k, v in data['media_rates'].items()})
+        
     save_settings(SETTINGS)
     return jsonify({'success': True, 'settings': SETTINGS})
 
@@ -109,31 +151,41 @@ def get_printer_status():
 @app.route('/upload', methods=['POST'])
 def handle_upload():
     global job_counter
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    file = request.files['file']
-    if not file or file.filename == '':
+    uploaded_files = request.files.getlist('files')
+    if not uploaded_files or uploaded_files[0].filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    filename = secure_filename(file.filename)
-    unique_name = f"{job_counter}_{filename}"
-    save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
-    file.save(save_path)
+    saved_filenames = []
+    for file in uploaded_files:
+        filename = secure_filename(file.filename)
+        unique_name = f"{job_counter}_{filename}"
+        save_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+        file.save(save_path)
+        saved_filenames.append(unique_name)
 
     copies = int(request.form.get('copies', 1))
     color_mode = request.form.get('color_mode', 'bw')
     print_side = request.form.get('print_side', 'single')
     layout = request.form.get('layout', '1_photo')
+    custom_rows = request.form.get('custom_rows', '3')
+    custom_cols = request.form.get('custom_cols', '3')
+    paper_size = request.form.get('paper_size', 'A4')
+    media_type = request.form.get('media_type', 'Plain Paper')
+    border = request.form.get('border', 'Bordered')
     total_price = float(request.form.get('total_price', 0.0))
 
     job = {
         'id': job_counter,
-        'filename': unique_name,
-        'original_name': filename,
+        'filenames': saved_filenames,
+        'primary_file': saved_filenames[0],
         'copies': copies,
         'color_mode': color_mode,
         'print_side': print_side,
-        'layout': layout,
+        'layout': f"Custom ({custom_rows}x{custom_cols})" if layout == 'custom' else layout,
+        'custom_grid': f"{custom_rows}x{custom_cols}" if layout == 'custom' else None,
+        'paper_size': paper_size,
+        'media_type': media_type,
+        'border': border,
         'total_price': total_price,
         'time': datetime.now().strftime('%d %b, %I:%M %p'),
         'payment_status': 'Pending Verification',
@@ -163,7 +215,7 @@ def verify_and_print(job_id):
     target['payment_status'] = 'Paid'
     target['print_status'] = 'Printing'
 
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], target['filename'])
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], target['primary_file'])
     ip = SETTINGS.get('printer_ip', '192.168.1.15')
     port = int(SETTINGS.get('printer_port', 9100))
 

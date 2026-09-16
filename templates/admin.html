@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Station — Satya Xerox</title>
+    <title>Admin Station Control — Satya Xerox</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>body { font-family: 'Inter', sans-serif; }</style>
@@ -12,13 +12,12 @@
 
     <div class="max-w-6xl mx-auto w-full space-y-6 flex-grow">
         
-        <!-- Header -->
         <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-zinc-800/80">
             <div class="flex items-center gap-3">
                 <img id="adminLogo" src="/static/logo.png" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=satya'" class="h-11 w-11 rounded-2xl object-contain border border-zinc-800 bg-zinc-900 p-1 shadow-sm">
                 <div>
                     <h1 class="text-lg font-bold text-white leading-tight">Admin Station Control</h1>
-                    <p class="text-xs text-zinc-400">Configure rates, UPI credentials, and authorize prints</p>
+                    <p class="text-xs text-zinc-400">Configure size rates, custom grid surcharge & verify jobs</p>
                 </div>
             </div>
             <div class="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full text-xs shadow-sm">
@@ -29,77 +28,120 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- Left Controls: Rates & Setup -->
+            <!-- Left Side: Config Tabs -->
             <section class="lg:col-span-5 space-y-5">
                 
-                <!-- Branding & Logo -->
+                <!-- Store Profile & UPI -->
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Portal Branding</h2>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Store Profile & Network</h2>
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="block text-zinc-400 mb-1 font-medium">Store Name</label>
                             <input type="text" id="shopNameInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
                         </div>
                         <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">Tagline / Subheading</label>
-                            <input type="text" id="taglineInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
-                        </div>
-                        <div>
                             <label class="block text-zinc-400 mb-1 font-medium">Upload Store Logo</label>
                             <input type="file" id="logoInput" accept="image/*" class="w-full text-xs text-zinc-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 cursor-pointer">
                         </div>
-                    </div>
-                </div>
-
-                <!-- UPI & Hardware -->
-                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">UPI & Canon IP</h2>
-                    <div class="space-y-3 text-xs">
                         <div>
                             <label class="block text-zinc-400 mb-1 font-medium">UPI VPA</label>
                             <input type="text" id="upiIdInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
                         </div>
                         <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">UPI Payee Name</label>
-                            <input type="text" id="payeeNameInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
-                        </div>
-                        <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">Canon G3010 Local IP Address</label>
+                            <label class="block text-zinc-400 mb-1 font-medium">Canon G3010 Local IP</label>
                             <input type="text" id="printerIpInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
                         </div>
                     </div>
                 </div>
 
-                <!-- Rate Configuration -->
+                <!-- Grid Layout Surcharges -->
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Rate Banner Setup (₹/page)</h2>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-purple-400">Layout Grid Surcharges (+₹)</h2>
                     <div class="grid grid-cols-2 gap-3 text-xs">
                         <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">B&W Single (₹)</label>
+                            <label class="block text-zinc-400 mb-1">1 Photo / Page (+₹)</label>
+                            <input type="number" id="layout1Photo" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">1 Full Sheet (+₹)</label>
+                            <input type="number" id="layout1Full" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">2 Top/Bottom (+₹)</label>
+                            <input type="number" id="layout2tb" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">2 Left/Right (+₹)</label>
+                            <input type="number" id="layout2lr" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">4 Grid (+₹)</label>
+                            <input type="number" id="layout4Grid" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">8 Passport (+₹)</label>
+                            <input type="number" id="layoutPassport" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div class="col-span-2 border-t border-zinc-800 pt-2">
+                            <label class="block text-cyan-400 mb-1 font-bold">Custom Grid Surcharge (+₹)</label>
+                            <input type="number" id="layoutCustom" step="1" class="w-full bg-zinc-950 border border-cyan-800/80 rounded-xl p-2 text-white outline-none focus:border-cyan-400">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paper Size Surcharges -->
+                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Paper Size Surcharges (+₹)</h2>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="block text-zinc-400 mb-1">A4 Sheet (+₹)</label>
+                            <input type="number" id="paperA4" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">4"x6" Photo (+₹)</label>
+                            <input type="number" id="paper4x6" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">5"x7" Photo (+₹)</label>
+                            <input type="number" id="paper5x7" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1">Card / Pass (+₹)</label>
+                            <input type="number" id="paperCard" step="1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Base Rates -->
+                <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Base Rate Banner (₹/page)</h2>
+                    <div class="grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="block text-zinc-400 mb-1">B&W Single (₹)</label>
                             <input type="number" id="bwSingleInput" step="0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                         <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">Color Single (₹)</label>
+                            <label class="block text-zinc-400 mb-1">Color Single (₹)</label>
                             <input type="number" id="colorSingleInput" step="0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                         <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">B&W Double (₹)</label>
+                            <label class="block text-zinc-400 mb-1">B&W Double (₹)</label>
                             <input type="number" id="bwDoubleInput" step="0.5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                         <div>
-                            <label class="block text-zinc-400 mb-1 font-medium">Color Double (₹)</label>
+                            <label class="block text-zinc-400 mb-1">Color Double (₹)</label>
                             <input type="number" id="colorDoubleInput" step="0.1" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2 text-white outline-none">
                         </div>
                     </div>
 
-                    <button id="saveConfigBtn" class="w-full py-2.5 bg-[#2563EB] hover:bg-blue-600 font-bold text-xs text-white rounded-xl shadow-lg shadow-blue-600/20 transition">
-                        Save Configurations
+                    <button id="saveConfigBtn" class="w-full py-3 bg-[#2563EB] hover:bg-blue-600 font-bold text-xs text-white rounded-xl shadow-lg shadow-blue-600/20 transition">
+                        Save All Configurations
                     </button>
                 </div>
 
             </section>
 
-            <!-- Right Queue: Live Authorization -->
+            <!-- Right Queue: Orders -->
             <section class="lg:col-span-7 space-y-4">
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-4">
                     <div class="flex justify-between items-center pb-2 border-b border-zinc-800">
@@ -121,10 +163,9 @@
         </div>
     </div>
 
-    <!-- Persistent Footer -->
-    <footer class="py-5 border-t border-zinc-900 bg-[#000000] text-center space-y-1 mt-6">
+    <!-- Persistent Branding Footer -->
+    <footer class="py-5 border-t border-zinc-900 bg-[#000000] text-center">
         <p class="text-xs font-semibold text-zinc-400 tracking-wide">Created & Designed by <span class="text-blue-500 font-extrabold uppercase">PIYUSH</span></p>
-        <p class="text-[10px] text-zinc-600">ApnaPrinter Cloud Integration Hub</p>
     </footer>
 
     <script>
@@ -133,11 +174,8 @@
             const data = await res.json();
             
             document.getElementById('shopNameInput').value = data.shop_name || '';
-            document.getElementById('taglineInput').value = data.tagline || '';
             document.getElementById('upiIdInput').value = data.upi_id || '';
-            document.getElementById('payeeNameInput').value = data.payee_name || '';
             document.getElementById('printerIpInput').value = data.printer_ip || '';
-
             if (data.logo_url) document.getElementById('adminLogo').src = data.logo_url;
 
             if (data.rates) {
@@ -145,6 +183,21 @@
                 document.getElementById('colorSingleInput').value = data.rates.color_single;
                 document.getElementById('bwDoubleInput').value = data.rates.bw_double;
                 document.getElementById('colorDoubleInput').value = data.rates.color_double;
+            }
+            if (data.layout_rates) {
+                document.getElementById('layout1Photo').value = data.layout_rates['1_photo'] || 0;
+                document.getElementById('layout1Full').value = data.layout_rates['1_full'] || 0;
+                document.getElementById('layout2tb').value = data.layout_rates['2_tb'] || 0;
+                document.getElementById('layout2lr').value = data.layout_rates['2_lr'] || 0;
+                document.getElementById('layout4Grid').value = data.layout_rates['4_grid'] || 0;
+                document.getElementById('layoutPassport').value = data.layout_rates['passport'] || 0;
+                document.getElementById('layoutCustom').value = data.layout_rates['custom'] || 0;
+            }
+            if (data.paper_rates) {
+                document.getElementById('paperA4').value = data.paper_rates['A4'] || 0;
+                document.getElementById('paper4x6').value = data.paper_rates['4x6'] || 0;
+                document.getElementById('paper5x7').value = data.paper_rates['5x7'] || 0;
+                document.getElementById('paperCard').value = data.paper_rates['Card'] || 0;
             }
         }
 
@@ -176,23 +229,37 @@
         document.getElementById('saveConfigBtn').addEventListener('click', async () => {
             const payload = {
                 shop_name: document.getElementById('shopNameInput').value,
-                tagline: document.getElementById('taglineInput').value,
                 upi_id: document.getElementById('upiIdInput').value,
-                payee_name: document.getElementById('payeeNameInput').value,
                 printer_ip: document.getElementById('printerIpInput').value,
                 rates: {
-                    bw_single: parseFloat(document.getElementById('bwSingleInput').value),
-                    color_single: parseFloat(document.getElementById('colorSingleInput').value),
-                    bw_double: parseFloat(document.getElementById('bwDoubleInput').value),
-                    color_double: parseFloat(document.getElementById('colorDoubleInput').value)
+                    bw_single: parseFloat(document.getElementById('bwSingleInput').value) || 2,
+                    color_single: parseFloat(document.getElementById('colorSingleInput').value) || 5,
+                    bw_double: parseFloat(document.getElementById('bwDoubleInput').value) || 5,
+                    color_double: parseFloat(document.getElementById('colorDoubleInput').value) || 0.5
+                },
+                layout_rates: {
+                    '1_photo': parseFloat(document.getElementById('layout1Photo').value) || 0,
+                    '1_full': parseFloat(document.getElementById('layout1Full').value) || 0,
+                    '2_tb': parseFloat(document.getElementById('layout2tb').value) || 0,
+                    '2_lr': parseFloat(document.getElementById('layout2lr').value) || 0,
+                    '4_grid': parseFloat(document.getElementById('layout4Grid').value) || 0,
+                    'passport': parseFloat(document.getElementById('layoutPassport').value) || 0,
+                    'custom': parseFloat(document.getElementById('layoutCustom').value) || 0
+                },
+                paper_rates: {
+                    'A4': parseFloat(document.getElementById('paperA4').value) || 0,
+                    '4x6': parseFloat(document.getElementById('paper4x6').value) || 0,
+                    '5x7': parseFloat(document.getElementById('paper5x7').value) || 0,
+                    'Card': parseFloat(document.getElementById('paperCard').value) || 0
                 }
             };
+
             const res = await fetch('/api/admin/config/update', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            if (res.ok) alert('Settings saved successfully!');
+            if (res.ok) alert('All settings & custom grid rates saved successfully!');
             pollPrinter();
         });
 
@@ -215,14 +282,14 @@
             container.innerHTML = jobs.slice().reverse().map(j => `
                 <div class="p-3.5 bg-zinc-950 border border-zinc-800 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <img src="/uploads/${j.filename}" class="h-12 w-12 rounded-lg object-cover border border-zinc-800">
+                        <img src="/uploads/${j.primary_file}" class="h-12 w-12 rounded-lg object-cover border border-zinc-800">
                         <div>
                             <div class="flex items-center gap-2">
                                 <span class="text-xs font-bold text-white">#${j.id}</span>
-                                <span class="text-xs font-medium text-zinc-300 truncate max-w-[130px]">${j.original_name}</span>
+                                <span class="text-xs font-medium text-zinc-300 truncate max-w-[130px]">${j.primary_file}</span>
                                 <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${j.payment_status === 'Paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${j.payment_status}</span>
                             </div>
-                            <p class="text-[11px] text-zinc-500 mt-0.5">${j.time} • ${j.copies}x • ${j.color_mode.toUpperCase()} • Side: ${j.print_side || 'single'}</p>
+                            <p class="text-[11px] text-zinc-500 mt-0.5">${j.time} • ${j.copies}x • ${j.color_mode.toUpperCase()} • Layout: ${j.layout} • ${j.paper_size}</p>
                         </div>
                     </div>
 
