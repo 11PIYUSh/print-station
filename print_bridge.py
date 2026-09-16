@@ -1,9 +1,9 @@
-import socket
-import io
+import os
+import subprocess
 from PIL import Image, ImageOps
 
 def format_image(image_path, paper_size="A4", color_mode="Color"):
-    """Prepares the image to the exact dimensions of the paper."""
+    """Formats the image to the exact page size and saves a temporary file for the print spooler."""
     dimensions = {
         'A4': (2480, 3508), 'Letter': (2550, 3300), 'Legal': (2550, 4200),
         '4x6': (1200, 1800), '5x7': (1500, 2100), 'Card': (651, 1074)
@@ -23,25 +23,29 @@ def format_image(image_path, paper_size="A4", color_mode="Color"):
             
         canvas.paste(im, ((target_w - im.width) // 2, (target_h - im.height) // 2))
         
-        buf = io.BytesIO()
-        # Save as a standard JPEG byte stream
-        canvas.save(buf, format='JPEG', quality=95, optimize=True)
-        return buf.getvalue()
+        # Save a temporary file for the Linux print driver to pick up
+        temp_path = os.path.join(os.getcwd(), "temp_print_job.jpg")
+        canvas.save(temp_path, format='JPEG', quality=95)
+        return temp_path
 
-def send_to_canon(payload_bytes, printer_ip, port=9100):
+def send_to_canon(payload_path, printer_ip, port=None):
     """
-    Sends the raw bytes directly to Canon's RAW Port 9100.
-    This avoids HTTP 404 errors because it does not use web protocols.
+    Hands the formatted image to the CUPS Linux Print Server.
+    CUPS handles the complex JPEG-to-Raster Canon translation automatically.
     """
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(15.0)
-        sock.connect((printer_ip, int(port)))
+        # We tell the 'lp' command line tool to print to the printer we named 'CanonG3010'
+        # -o media=A4 sets the paper size, -o fit-to-page ensures it doesn't bleed off the edge
+        result = subprocess.run(
+            ["lp", "-d", "CanonG3010", "-o", "media=A4", "-o", "fit-to-page", payload_path],
+            capture_output=True,
+            text=True
+        )
         
-        # Send data directly to the printer's hardware buffer
-        sock.sendall(payload_bytes)
-        sock.close()
-        
-        return True, "Sent successfully to Port 9100"
+        if result.returncode == 0:
+            return True, "Job sent to print spooler. Green light should blink!"
+        else:
+            return False, f"Print Spooler Error: {result.stderr}"
+            
     except Exception as e:
-        return False, f"Connection Error: {str(e)}"
+        return False, f"System Error: Is 'cupsd' running? ({str(e)})"
