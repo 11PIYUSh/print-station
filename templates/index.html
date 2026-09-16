@@ -15,7 +15,6 @@
 </head>
 <body class="bg-[#09090B] text-zinc-100 min-h-screen flex flex-col justify-between antialiased selection:bg-blue-600 selection:text-white">
 
-    <!-- Top Navigation Header -->
     <header class="bg-[#000000]/95 border-b border-zinc-800 sticky top-0 z-40 backdrop-blur-md">
         <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
@@ -31,7 +30,6 @@
             </button>
         </div>
 
-        <!-- Rates Banner -->
         <div class="max-w-md mx-auto px-4 pb-2.5">
             <div class="bg-zinc-900/90 border border-zinc-800 rounded-xl px-3 py-1.5 grid grid-cols-2 gap-x-3 text-[11px]">
                 <div class="flex items-center justify-between">
@@ -54,12 +52,10 @@
         </div>
     </header>
 
-    <!-- Main Container -->
     <main class="w-full max-w-md mx-auto px-4 py-4 flex-grow space-y-4">
-
-        <!-- ================= SCREEN 1: PRINT IMAGES (A4) ================= -->
+        
+        <!-- IMAGES MODE -->
         <div id="screenImages" class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
-            
             <div class="flex items-center justify-between">
                 <div>
                     <h2 class="text-base font-bold text-white">Print Images (A4)</h2>
@@ -68,235 +64,120 @@
                 <span id="selectedCountBadge" class="text-[10px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800 px-2 py-1 rounded-lg">0 Images Added</span>
             </div>
 
-            <!-- Upload Box -->
             <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-6 text-center cursor-pointer transition group">
                 <div class="flex flex-col items-center justify-center gap-1.5">
                     <svg class="w-7 h-7 text-blue-500 group-hover:scale-110 transition duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     <span class="text-xs font-bold text-zinc-200">Tap to select multiple images</span>
-                    <span class="text-[10px] text-zinc-500">JPG, PNG, WEBP (Multiple allowed, up to 25MB)</span>
                 </div>
                 <input type="file" id="imageFileInput" accept="image/*" multiple class="hidden">
             </label>
 
-            <!-- Thumbnails Row -->
             <div id="stagedThumbs" class="hidden flex gap-2 overflow-x-auto py-1"></div>
 
-            <!-- Page Layout Presets -->
             <div class="space-y-2">
-                <div class="flex items-center justify-between text-xs">
-                    <span class="font-bold text-zinc-300">Page Layout Preset</span>
-                    <div class="flex items-center gap-1">
-                        <button type="button" onclick="setLayout('1_photo')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-600 text-white shadow-sm">🖼️ 1 Photo / 1 Page</button>
-                        <button type="button" onclick="setLayout('passport')" class="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-purple-600 text-white shadow-sm">👤 Passport (8)</button>
-                    </div>
-                </div>
-
+                <span class="font-bold text-zinc-300 text-xs">Page Layout Preset</span>
                 <div class="grid grid-cols-2 gap-2 text-xs font-semibold">
                     <button type="button" onclick="setLayout('1_photo')" id="btnLayout1" class="p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border-2 border-blue-500 rounded-sm"></div>
-                        <span class="text-[11px]">1 Photo / Page</span>
+                        <div class="w-4 h-5 border-2 border-blue-500 rounded-sm"></div><span class="text-[11px]">1 Photo / Page</span>
                     </button>
                     <button type="button" onclick="setLayout('1_full')" id="btnLayoutFull" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border border-zinc-700 rounded-sm bg-zinc-900"></div>
-                        <span class="text-[11px]">1 Image (Full Sheet)</span>
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm bg-zinc-900"></div><span class="text-[11px]">1 Image (Full)</span>
                     </button>
                     <button type="button" onclick="setLayout('2_tb')" id="btnLayout2tb" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border border-zinc-700 rounded-sm flex flex-col justify-between p-0.5"><div class="h-1.5 bg-zinc-700 rounded-xs"></div><div class="h-1.5 bg-zinc-700 rounded-xs"></div></div>
-                        <span class="text-[11px]">2 Images (Top/Bottom)</span>
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm flex flex-col justify-between p-0.5"><div class="h-1.5 bg-zinc-700 rounded-xs"></div><div class="h-1.5 bg-zinc-700 rounded-xs"></div></div><span class="text-[11px]">2 (Top/Bottom)</span>
                     </button>
                     <button type="button" onclick="setLayout('2_lr')" id="btnLayout2lr" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border border-zinc-700 rounded-sm flex justify-between p-0.5"><div class="w-1.5 bg-zinc-700 rounded-xs"></div><div class="w-1.5 bg-zinc-700 rounded-xs"></div></div>
-                        <span class="text-[11px]">2 Images (Left/Right)</span>
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm flex justify-between p-0.5"><div class="w-1.5 bg-zinc-700 rounded-xs"></div><div class="w-1.5 bg-zinc-700 rounded-xs"></div></div><span class="text-[11px]">2 (Left/Right)</span>
                     </button>
                     <button type="button" onclick="setLayout('4_grid')" id="btnLayout4" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border border-zinc-700 rounded-sm grid grid-cols-2 gap-0.5 p-0.5"><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div></div>
-                        <span class="text-[11px]">4 Images (2x2 Grid)</span>
+                        <div class="w-4 h-5 border border-zinc-700 rounded-sm grid grid-cols-2 gap-0.5 p-0.5"><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div><div class="bg-zinc-700"></div></div><span class="text-[11px]">4 Images (2x2)</span>
                     </button>
                     <button type="button" onclick="setLayout('custom')" id="btnLayoutCustom" class="p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2">
-                        <div class="w-4 h-5 border border-dashed border-cyan-500 rounded-sm"></div>
-                        <span class="text-[11px]">Custom Grid ✦</span>
+                        <div class="w-4 h-5 border border-dashed border-cyan-500 rounded-sm"></div><span class="text-[11px]">Custom Grid ✦</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Custom Grid Configurator Box (Shown only when 'custom' is active) -->
             <div id="customGridSettings" class="hidden border border-cyan-800/80 rounded-2xl p-3.5 bg-cyan-950/20 space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Custom Grid Matrix</span>
-                    <span id="customTotalSlots" class="text-[10px] font-bold text-zinc-400 bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded-full">9 Total Slots</span>
-                </div>
-
                 <div class="grid grid-cols-2 gap-3 text-xs">
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Rows (Vertical)</label>
-                        <select id="customRows" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="1">1 Row</option>
-                            <option value="2">2 Rows</option>
-                            <option value="3" selected>3 Rows</option>
-                            <option value="4">4 Rows</option>
-                            <option value="5">5 Rows</option>
-                            <option value="6">6 Rows</option>
-                        </select>
+                        <select id="customRows" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Row</option><option value="2">2 Rows</option><option value="3" selected>3 Rows</option><option value="4">4 Rows</option></select>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Columns (Horizontal)</label>
-                        <select id="customCols" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="1">1 Column</option>
-                            <option value="2">2 Columns</option>
-                            <option value="3" selected>3 Columns</option>
-                            <option value="4">4 Columns</option>
-                            <option value="5">5 Columns</option>
-                            <option value="6">6 Columns</option>
-                        </select>
+                        <select id="customCols" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Column</option><option value="2">2 Columns</option><option value="3" selected>3 Columns</option><option value="4">4 Columns</option></select>
                     </div>
                 </div>
             </div>
 
-            <!-- Printer Settings Drawer -->
             <div class="border border-zinc-800 rounded-2xl p-3.5 bg-zinc-950/60 space-y-3">
                 <span class="text-[11px] font-bold text-zinc-300 block">Printer Media & Paper Settings:</span>
-                
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                        <label class="text-[10px] font-bold text-zinc-400 block mb-1">Paper Size</label>
                         <select id="paperSizeSelect" onchange="recalc()" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="A4" selected>A4 Standard</option>
-                            <option value="4x6">4"x6" Photo</option>
-                            <option value="5x7">5"x7" Photo</option>
-                            <option value="Letter">Letter</option>
-                            <option value="Legal">Legal</option>
-                            <option value="A5">A5</option>
-                            <option value="B5">B5</option>
-                            <option value="Card">Card Size</option>
+                            <option value="A4" selected>A4 Standard</option><option value="4x6">4"x6" Photo</option><option value="5x7">5"x7" Photo</option>
                         </select>
                     </div>
-
                     <div>
-                        <label class="text-[10px] font-bold text-zinc-400 block mb-1">Media Type</label>
                         <select id="mediaTypeSelect" onchange="recalc()" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="Plain Paper" selected>Plain Paper</option>
-                            <option value="Glossy Photo Paper">Glossy Photo Paper</option>
-                            <option value="Photo Paper Plus Glossy II">Glossy II Photo</option>
-                            <option value="Photo Paper Pro Luster">Pro Luster</option>
-                            <option value="Matte Photo Paper">Matte Photo</option>
-                            <option value="High Resolution Paper">High Resolution</option>
+                            <option value="Plain Paper" selected>Plain Paper</option><option value="Glossy Photo Paper">Glossy Photo</option><option value="Matte Photo Paper">Matte Photo</option>
                         </select>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-2 gap-2 text-xs pt-1">
-                    <div>
-                        <label class="text-[10px] font-bold text-zinc-400 block mb-1">Border</label>
-                        <select id="borderSelect" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
-                            <option value="Bordered" selected>Bordered</option>
-                            <option value="Borderless">Borderless</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-bold text-zinc-400 block mb-1">Active Slot Fit</label>
-                        <div class="inline-flex rounded-lg border border-zinc-800 bg-zinc-900 p-0.5 w-full justify-between">
-                            <button type="button" onclick="setFit('contain')" id="fitContain" class="px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white">Fit</button>
-                            <button type="button" onclick="setFit('cover')" id="fitCover" class="px-2 py-1 rounded text-[10px] font-semibold text-zinc-400">Fill</button>
-                            <button type="button" onclick="setFit('fill')" id="fitFill" class="px-2 py-1 rounded text-[10px] font-semibold text-zinc-400">Stretch</button>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/80">
-                    <button type="button" onclick="rotateImage()" class="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 text-[11px] font-semibold text-zinc-300 flex items-center gap-1">
-                        <span>↻ Rotate:</span> <span id="rotateLabel" class="text-blue-400">0°</span>
-                    </button>
-                    <div class="flex items-center gap-2 flex-grow max-w-[140px]">
-                        <input type="range" id="zoomSlider" min="50" max="200" value="100" class="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none accent-blue-600">
-                    </div>
-                    <button type="button" onclick="clearSlot()" class="text-xs text-rose-400 font-semibold border border-rose-950 bg-rose-950/30 px-2.5 py-1.5 rounded-xl">
-                        🗑 Clear
-                    </button>
+                    <button type="button" onclick="rotateImage()" class="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 text-[11px] font-semibold text-zinc-300">↻ Rotate</button>
+                    <button type="button" onclick="clearSlot()" class="text-xs text-rose-400 font-semibold border border-rose-950 bg-rose-950/30 px-2.5 py-1.5 rounded-xl">🗑 Clear</button>
                 </div>
             </div>
 
-            <!-- Live A4 WYSIWYG Print Preview -->
             <div class="bg-[#000000] border border-zinc-800/90 rounded-2xl p-4 text-white space-y-3">
-                <div class="flex items-center justify-between text-xs border-b border-zinc-800 pb-2">
-                    <div>
-                        <h3 class="font-bold text-white">Live A4 Print Preview</h3>
-                        <p class="text-[9px] text-zinc-400 font-medium">(WYSIWYG)</p>
-                    </div>
-                    <span class="text-[9px] text-zinc-400" id="previewLayoutNote">Layout: 1 Photo / Page</span>
-                </div>
-
-                <!-- Realistic White A4 Paper Sheet -->
+                <h3 class="text-xs font-bold text-white border-b border-zinc-800 pb-2">Live Print Preview (WYSIWYG)</h3>
                 <div class="flex justify-center p-3 bg-zinc-950 rounded-xl">
                     <div id="a4Canvas" class="w-full max-w-[260px] ratio-a4 bg-white rounded-xs shadow-2xl p-3 flex items-center justify-center overflow-hidden border border-zinc-300">
                         <div id="previewSlot" class="w-full h-full flex items-center justify-center overflow-hidden text-slate-400">
-                            <span class="text-[10px] text-slate-400 text-center px-4">Upload an image to preview layout</span>
+                            <span class="text-[10px] text-slate-400 text-center">Upload an image to preview layout</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- ================= SCREEN 2: UPLOAD DOCUMENT ================= -->
+        <!-- DOCUMENT MODE -->
         <div id="screenDocument" class="hidden bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
             <div>
                 <h2 class="text-base font-bold text-white">Upload Document</h2>
-                <p class="text-xs text-zinc-400">Select PDF or image files to send to printer</p>
+                <p class="text-xs text-zinc-400">Select files to send to printer</p>
             </div>
-
             <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-8 text-center cursor-pointer transition">
-                <div class="flex flex-col items-center justify-center gap-2">
-                    <div class="h-10 w-10 rounded-full bg-blue-950/60 border border-blue-800 flex items-center justify-center text-blue-400 text-lg font-bold">↑</div>
-                    <span class="text-xs font-bold text-zinc-200">Tap or drag files here</span>
-                    <span class="text-[10px] text-zinc-500">PDF, DOCX, Images (Up to 25MB)</span>
-                </div>
+                <span class="text-xs font-bold text-zinc-200 block mt-2">Tap or drag files here</span>
                 <input type="file" id="docFileInput" accept="image/*,.pdf" multiple class="hidden">
             </label>
-
             <div class="space-y-1.5">
-                <div class="flex justify-between items-center text-xs">
-                    <label class="font-bold text-zinc-300">Page Selection</label>
-                    <span class="text-[10px] text-zinc-500">e.g. All, 1-5, or 2,4,7</span>
-                </div>
-                <input type="text" id="pageRangeInput" value="1-5" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-white outline-none focus:border-blue-500">
-            </div>
-
-            <div class="space-y-1.5">
-                <div class="flex justify-between items-center text-xs">
-                    <label class="font-bold text-zinc-300">Print Side</label>
-                    <span class="text-[10px] text-zinc-500" id="sideRateHint">1-Side: ₹2.00/p • 2-Side: ₹5.00/p</span>
-                </div>
+                <label class="font-bold text-zinc-300 text-xs block">Print Side</label>
                 <div class="grid grid-cols-2 gap-2 text-xs">
-                    <button type="button" onclick="setPrintSide('single')" id="btnSideSingle" class="py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-1.5">
-                        <span>📄 Single Side (1-Side)</span>
-                    </button>
-                    <button type="button" onclick="setPrintSide('double')" id="btnSideDouble" class="py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-1.5">
-                        <span>📑 Double Side (2-Side)</span>
-                    </button>
+                    <button type="button" onclick="setPrintSide('single')" id="btnSideSingle" class="py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold">📄 1-Side</button>
+                    <button type="button" onclick="setPrintSide('double')" id="btnSideDouble" class="py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold">📑 2-Side</button>
                 </div>
             </div>
         </div>
 
-        <!-- ================= SHARED CONTROLS ================= -->
+        <!-- SHARED CONTROLS -->
         <div class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
-            
             <div class="space-y-1.5">
                 <label class="text-xs font-bold text-zinc-300 block">Number of Copies</label>
                 <div class="flex items-center border border-zinc-800 bg-zinc-950 rounded-xl w-36 overflow-hidden">
-                    <button type="button" onclick="adjustCopies(-1)" class="w-11 h-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-base flex items-center justify-center border-r border-zinc-800">-</button>
-                    <input type="text" id="copiesCount" value="1" readonly class="w-14 h-10 text-center font-bold text-white text-sm outline-none bg-transparent">
-                    <button type="button" onclick="adjustCopies(1)" class="w-11 h-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-base flex items-center justify-center border-l border-zinc-800">+</button>
+                    <button type="button" onclick="adjustCopies(-1)" class="w-11 h-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-base border-r border-zinc-800">-</button>
+                    <input type="text" id="copiesCount" value="1" readonly class="w-14 h-10 text-center font-bold text-white text-sm bg-transparent">
+                    <button type="button" onclick="adjustCopies(1)" class="w-11 h-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-base border-l border-zinc-800">+</button>
                 </div>
             </div>
 
             <div class="space-y-1.5">
                 <label class="text-xs font-bold text-zinc-300 block">Color Mode</label>
                 <div class="grid grid-cols-2 gap-2 text-xs">
-                    <button type="button" onclick="setColorMode('bw')" id="btnModeBw" class="py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition">
-                        <span class="h-2 w-2 rounded-full bg-zinc-400"></span> Black & White
-                    </button>
-                    <button type="button" onclick="setColorMode('color')" id="btnModeColor" class="py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-2 shadow-sm transition">
-                        <span class="h-2 w-2 rounded-full bg-amber-400"></span> Full Color
-                    </button>
+                    <button type="button" onclick="setColorMode('bw')" id="btnModeBw" class="py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold">Black & White</button>
+                    <button type="button" onclick="setColorMode('color')" id="btnModeColor" class="py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold">Full Color</button>
                 </div>
             </div>
 
@@ -308,327 +189,165 @@
                 <span id="priceDisplay" class="text-2xl font-extrabold text-blue-400">₹2.00</span>
             </div>
 
-            <button type="button" id="continuePrintBtn" onclick="submitPrintOrder()" class="w-full py-4 bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2 transition active:scale-[0.99]">
-                <span>Continue to Print</span>
-                <span>→</span>
+            <button type="button" onclick="submitPrintOrder()" class="w-full py-4 bg-[#2563EB] hover:bg-blue-600 text-white font-bold text-sm rounded-2xl shadow-xl shadow-blue-600/20">
+                Continue to Print →
             </button>
         </div>
-
     </main>
 
     <!-- Payment Modal -->
     <div id="payModal" class="hidden fixed inset-0 bg-[#000000]/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-        <div class="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center space-y-5 shadow-2xl">
+        <div class="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-6 text-center space-y-5">
             <div>
                 <span class="text-xs font-bold text-blue-400 uppercase tracking-wider" id="orderIdBadge">Order Registered</span>
                 <h3 class="text-lg font-bold text-white mt-0.5">Complete Payment</h3>
             </div>
-
-            <div class="inline-block p-3 bg-white rounded-2xl shadow-xl">
-                <div id="qrcode"></div>
-            </div>
-
+            <div class="inline-block p-3 bg-white rounded-2xl shadow-xl"><div id="qrcode"></div></div>
             <div class="space-y-1">
-                <p class="text-xs text-zinc-400">Scan using PhonePe, GPay, or Paytm</p>
                 <p class="text-xl font-extrabold text-white" id="modalPrice">₹2.00</p>
             </div>
-
             <div class="p-3 bg-zinc-950 rounded-2xl border border-zinc-800 space-y-2">
                 <div class="flex items-center justify-center gap-2">
                     <span id="statusCircle" class="h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping"></span>
                     <span id="statusMessage" class="text-xs font-bold text-zinc-200">Waiting for counter approval...</span>
                 </div>
-                <p id="statusHint" class="text-[10px] text-zinc-500">Show transaction verification at the counter.</p>
             </div>
-
-            <button type="button" id="closeModalBtn" onclick="closePaymentModal()" class="hidden w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl transition">
-                Done / New Order
-            </button>
+            <button type="button" id="closeModalBtn" onclick="closePaymentModal()" class="hidden w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-white font-bold text-xs rounded-xl">Done / New Order</button>
         </div>
     </div>
 
-    <!-- Persistent Branding Footer -->
     <footer class="py-5 border-t border-zinc-900 bg-[#000000] text-center">
         <p class="text-xs font-semibold text-zinc-400 tracking-wide">Created & Designed by <span class="text-blue-500 font-extrabold uppercase">PIYUSH</span></p>
     </footer>
 
     <script>
-        let currentScreen = 'images';
-        let stagedFiles = [];
-        let stagedDataUrls = [];
-        let config = {};
-        let activeLayout = '1_photo';
-        let fitMode = 'contain';
-        let rotationAngle = 0;
-        let zoomScale = 1;
-        let selectedColorMode = 'bw';
-        let selectedPrintSide = 'single';
-        let activeJobId = null;
-        let pollTimer = null;
+        let currentScreen = 'images', stagedFiles = [], stagedDataUrls = [];
+        let config = {}, activeLayout = '1_photo', rotationAngle = 0, selectedColorMode = 'bw', selectedPrintSide = 'single';
+        let activeJobId = null, pollTimer = null;
 
         async function init() {
-            try {
-                const res = await fetch('/api/config');
-                config = await res.json();
-            } catch {
-                config = {};
-            }
-            
+            try { config = await (await fetch('/api/config')).json(); } catch {}
             document.getElementById('shopTitle').textContent = config.shop_name || 'Satya Xerox';
-            document.getElementById('shopSub').textContent = config.tagline || 'ONLINE PRINT PORTAL';
             if (config.logo_url) document.getElementById('shopLogo').src = config.logo_url;
-
-            const r = config.rates || { bw_single: 2, bw_double: 5, color_single: 5, color_double: 0.5 };
-            document.getElementById('rateBwSingle').innerHTML = `₹${(r.bw_single || 2).toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
-            document.getElementById('rateColorSingle').innerHTML = `₹${(r.color_single || 5).toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
-            document.getElementById('rateBwDouble').innerHTML = `₹${(r.bw_double || 5).toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
-            document.getElementById('rateColorDouble').innerHTML = `₹${(r.color_double || 0.5).toFixed(2)}<span class="text-[9px] text-zinc-500 font-normal">/p</span>`;
             recalc();
         }
 
         function togglePortalMode() {
-            const screenImages = document.getElementById('screenImages');
-            const screenDoc = document.getElementById('screenDocument');
-            const switchBtnText = document.getElementById('switchBtnText');
-            const switchBtnIcon = document.getElementById('switchBtnIcon');
-
-            if (currentScreen === 'images') {
-                currentScreen = 'document';
-                screenImages.classList.add('hidden');
-                screenDoc.classList.remove('hidden');
-                switchBtnText.textContent = 'Print Images (A4)';
-                switchBtnIcon.textContent = '🖼️';
-            } else {
-                currentScreen = 'images';
-                screenDoc.classList.add('hidden');
-                screenImages.classList.remove('hidden');
-                switchBtnText.textContent = 'Print Document';
-                switchBtnIcon.textContent = '📄';
-            }
+            currentScreen = currentScreen === 'images' ? 'document' : 'images';
+            document.getElementById('screenImages').classList.toggle('hidden');
+            document.getElementById('screenDocument').classList.toggle('hidden');
+            document.getElementById('switchBtnText').textContent = currentScreen === 'images' ? 'Print Document' : 'Print Images (A4)';
+            document.getElementById('switchBtnIcon').textContent = currentScreen === 'images' ? '📄' : '🖼️';
             recalc();
         }
 
         function setPrintSide(side) {
             selectedPrintSide = side;
-            document.getElementById('btnSideSingle').className = side === 'single'
-                ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-1.5"
-                : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-1.5";
-            document.getElementById('btnSideDouble').className = side === 'double'
-                ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-1.5"
-                : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-1.5";
+            document.getElementById('btnSideSingle').className = side === 'single' ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold" : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold";
+            document.getElementById('btnSideDouble').className = side === 'double' ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold" : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold";
             recalc();
         }
 
         function adjustCopies(delta) {
-            const input = document.getElementById('copiesCount');
-            let val = parseInt(input.value) + delta;
-            if (val < 1) val = 1;
-            if (val > 100) val = 100;
-            input.value = val;
+            const el = document.getElementById('copiesCount');
+            let val = Math.max(1, parseInt(el.value) + delta);
+            el.value = val;
             recalc();
         }
 
         function setColorMode(mode) {
             selectedColorMode = mode;
-            document.getElementById('btnModeBw').className = mode === 'bw'
-                ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-2 shadow-sm"
-                : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-2 shadow-sm";
-            document.getElementById('btnModeColor').className = mode === 'color'
-                ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold flex items-center justify-center gap-2 shadow-sm"
-                : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold flex items-center justify-center gap-2 shadow-sm";
+            document.getElementById('btnModeBw').className = mode === 'bw' ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold" : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold";
+            document.getElementById('btnModeColor').className = mode === 'color' ? "py-2.5 px-3 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 font-semibold" : "py-2.5 px-3 rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 font-semibold";
             renderPreviewLayout();
             recalc();
         }
 
         function recalc() {
-            const copies = parseInt(document.getElementById('copiesCount')?.value) || 1;
+            const copies = parseInt(document.getElementById('copiesCount').value) || 1;
             const rates = config.rates || { bw_single: 2, bw_double: 5, color_single: 5, color_double: 0.5 };
-            const paperRates = config.paper_rates || {};
+            let baseRate = selectedColorMode === 'bw' 
+                ? (selectedPrintSide === 'double' ? (rates.bw_double||5) : (rates.bw_single||2)) 
+                : (selectedPrintSide === 'double' ? (rates.color_double||0.5) : (rates.color_single||5));
+            
             const layoutRates = config.layout_rates || {};
-            const mediaRates = config.media_rates || {};
-
-            let baseRate = 2.0;
-            if (selectedColorMode === 'bw') {
-                baseRate = (selectedPrintSide === 'double') ? (rates.bw_double || 5.0) : (rates.bw_single || 2.0);
-            } else {
-                baseRate = (selectedPrintSide === 'double') ? (rates.color_double || 0.5) : (rates.color_single || 5.0);
-            }
-
-            const pSize = document.getElementById('paperSizeSelect')?.value || 'A4';
-            const mType = document.getElementById('mediaTypeSelect')?.value || 'Plain Paper';
-
-            const sizeSurcharge = parseFloat(paperRates[pSize]) || 0.0;
-            const layoutSurcharge = (currentScreen === 'images') ? (parseFloat(layoutRates[activeLayout]) || 0.0) : 0.0;
-            const mediaSurcharge = parseFloat(mediaRates[mType]) || 0.0;
-
-            const unitPrice = baseRate + sizeSurcharge + layoutSurcharge + mediaSurcharge;
+            const layoutSur = currentScreen === 'images' ? (parseFloat(layoutRates[activeLayout]) || 0) : 0;
+            const unitPrice = baseRate + layoutSur;
             const total = (unitPrice * copies).toFixed(2);
 
             document.getElementById('priceDisplay').textContent = `₹${total}`;
-            const sideText = (selectedPrintSide === 'double') ? '2-sided' : '1-sided';
-            document.getElementById('breakdownText').textContent = `1 page (${sideText}) × ${copies} copies × ₹${unitPrice.toFixed(2)}/page`;
+            document.getElementById('breakdownText').textContent = `1 page × ${copies} copies × ₹${unitPrice.toFixed(2)}/page`;
         }
 
         function setLayout(layout) {
             activeLayout = layout;
-            ['btnLayout1', 'btnLayoutFull', 'btnLayout2tb', 'btnLayout2lr', 'btnLayout4', 'btnLayoutCustom'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.className = "p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2";
+            ['btnLayout1','btnLayoutFull','btnLayout2tb','btnLayout2lr','btnLayout4','btnLayoutCustom'].forEach(id => {
+                if(document.getElementById(id)) document.getElementById(id).className = "p-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-zinc-400 flex items-center gap-2";
             });
-
-            const map = {
-                '1_photo': 'btnLayout1',
-                '1_full': 'btnLayoutFull',
-                '2_tb': 'btnLayout2tb',
-                '2_lr': 'btnLayout2lr',
-                '4_grid': 'btnLayout4',
-                'custom': 'btnLayoutCustom'
-            };
-            if (map[layout]) {
-                document.getElementById(map[layout]).className = "p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2";
-            }
-
-            // Show or hide custom grid matrix drawer
-            const customBox = document.getElementById('customGridSettings');
-            if (layout === 'custom') {
-                customBox.classList.remove('hidden');
-                document.getElementById('previewLayoutNote').textContent = `Layout: Custom Matrix`;
-            } else {
-                customBox.classList.add('hidden');
-                document.getElementById('previewLayoutNote').textContent = `Layout: ${layout}`;
-            }
-
+            const maps = {'1_photo':'btnLayout1','1_full':'btnLayoutFull','2_tb':'btnLayout2tb','2_lr':'btnLayout2lr','4_grid':'btnLayout4','custom':'btnLayoutCustom'};
+            if(maps[layout]) document.getElementById(maps[layout]).className = "p-2.5 rounded-xl border border-blue-600 bg-blue-950/40 text-blue-400 flex items-center gap-2";
+            
+            document.getElementById('customGridSettings').style.display = layout === 'custom' ? 'block' : 'none';
             renderPreviewLayout();
             recalc();
         }
 
-        function updateCustomMatrix() {
-            const r = parseInt(document.getElementById('customRows').value) || 3;
-            const c = parseInt(document.getElementById('customCols').value) || 3;
-            document.getElementById('customTotalSlots').textContent = `${r * c} Total Slots (${r}x${c})`;
-            document.getElementById('previewLayoutNote').textContent = `Layout: Custom (${r}x${c})`;
-            renderPreviewLayout();
-        }
-
-        function setFit(mode) {
-            fitMode = mode;
-            ['fitContain', 'fitCover', 'fitFill'].forEach(id => {
-                document.getElementById(id).className = "px-2 py-1 rounded text-[10px] font-semibold text-zinc-400";
-            });
-            if (mode === 'contain') document.getElementById('fitContain').className = "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white";
-            if (mode === 'cover') document.getElementById('fitCover').className = "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white";
-            if (mode === 'fill') document.getElementById('fitFill').className = "px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white";
-            renderPreviewLayout();
-        }
+        function updateCustomMatrix() { renderPreviewLayout(); }
 
         function rotateImage() {
             rotationAngle = (rotationAngle + 90) % 360;
-            document.getElementById('rotateLabel').textContent = `${rotationAngle}°`;
             renderPreviewLayout();
         }
-
-        document.getElementById('zoomSlider').addEventListener('input', (e) => {
-            zoomScale = e.target.value / 100;
-            renderPreviewLayout();
-        });
 
         function clearSlot() {
-            stagedFiles = [];
-            stagedDataUrls = [];
+            stagedFiles = []; stagedDataUrls = [];
             document.getElementById('imageFileInput').value = '';
-            document.getElementById('docFileInput').value = '';
-            document.getElementById('stagedThumbs').classList.add('hidden');
-            document.getElementById('stagedThumbs').innerHTML = '';
-            document.getElementById('selectedCountBadge').textContent = '0 Images Added';
-            document.getElementById('previewSlot').innerHTML = `<span class="text-[10px] text-slate-400 text-center px-4">Upload an image to preview layout</span>`;
+            document.getElementById('previewSlot').innerHTML = `<span class="text-[10px] text-slate-400">Upload an image to preview layout</span>`;
         }
 
-        document.getElementById('imageFileInput').addEventListener('change', handleMultipleUpload);
-        document.getElementById('docFileInput').addEventListener('change', handleMultipleUpload);
-
-        function handleMultipleUpload(e) {
-            const files = Array.from(e.target.files);
-            if (!files.length) return;
-
-            stagedFiles = files;
+        document.getElementById('imageFileInput').addEventListener('change', e => {
+            stagedFiles = Array.from(e.target.files);
+            if (!stagedFiles.length) return;
             stagedDataUrls = [];
-            document.getElementById('selectedCountBadge').textContent = `${files.length} Image(s) Added`;
-
-            const thumbContainer = document.getElementById('stagedThumbs');
-            thumbContainer.innerHTML = '';
-            thumbContainer.classList.remove('hidden');
-
-            files.forEach((f, idx) => {
+            stagedFiles.forEach((f, idx) => {
                 const r = new FileReader();
-                r.onload = ev => {
-                    stagedDataUrls.push(ev.target.result);
-                    const thumb = document.createElement('img');
-                    thumb.src = ev.target.result;
-                    thumb.className = "h-12 w-12 rounded-lg object-cover border border-zinc-700 shrink-0";
-                    thumbContainer.appendChild(thumb);
-                    if (idx === 0) renderPreviewLayout();
-                };
+                r.onload = ev => { stagedDataUrls.push(ev.target.result); if(idx===0) renderPreviewLayout(); };
                 r.readAsDataURL(f);
             });
-        }
+        });
 
         function renderPreviewLayout() {
             if (!stagedDataUrls.length) return;
-            const slot = document.getElementById('previewSlot');
-            const bwClass = (selectedColorMode === 'bw') ? 'is-bw' : '';
-
-            const makeImg = (url) => `
-                <img src="${url}" style="object-fit:${fitMode}; transform:rotate(${rotationAngle}deg) scale(${zoomScale}); width:100%; height:100%;" class="transition duration-150 rounded-xs ${bwClass}">
-            `;
-
+            const bwClass = selectedColorMode === 'bw' ? 'is-bw' : '';
+            const mk = (url) => `<img src="${url}" style="object-fit:contain; transform:rotate(${rotationAngle}deg); width:100%; height:100%;" class="${bwClass}">`;
             const first = stagedDataUrls[0];
+            const slot = document.getElementById('previewSlot');
 
             if (activeLayout === 'custom') {
-                const rows = parseInt(document.getElementById('customRows').value) || 3;
-                const cols = parseInt(document.getElementById('customCols').value) || 3;
-                const totalSlots = rows * cols;
-                
-                let cellsHtml = '';
-                for (let i = 0; i < totalSlots; i++) {
-                    const imgUrl = stagedDataUrls[i % stagedDataUrls.length] || first;
-                    cellsHtml += `<div class="overflow-hidden border border-slate-200 rounded-xs flex items-center justify-center p-0.5">${makeImg(imgUrl)}</div>`;
-                }
-                slot.innerHTML = `<div class="grid gap-1 w-full h-full p-1" style="grid-template-columns: repeat(${cols}, minmax(0, 1fr)); grid-template-rows: repeat(${rows}, minmax(0, 1fr));">${cellsHtml}</div>`;
-
-            } else if (activeLayout === 'passport') {
-                slot.innerHTML = `<div class="grid grid-cols-4 grid-rows-2 gap-1 w-full h-full p-1">${Array(8).fill(`<div class="overflow-hidden border border-slate-200 rounded-xs flex items-center justify-center">${makeImg(first)}</div>`).join('')}</div>`;
-            } else if (activeLayout === '2_tb') {
-                const img2 = stagedDataUrls[1] || first;
-                slot.innerHTML = `<div class="grid grid-rows-2 gap-1.5 w-full h-full p-1"><div class="overflow-hidden border border-slate-200 rounded-xs">${makeImg(first)}</div><div class="overflow-hidden border border-slate-200 rounded-xs">${makeImg(img2)}</div></div>`;
-            } else if (activeLayout === '2_lr') {
-                const img2 = stagedDataUrls[1] || first;
-                slot.innerHTML = `<div class="grid grid-cols-2 gap-1.5 w-full h-full p-1"><div class="overflow-hidden border border-slate-200 rounded-xs">${makeImg(first)}</div><div class="overflow-hidden border border-slate-200 rounded-xs">${makeImg(img2)}</div></div>`;
+                const r = parseInt(document.getElementById('customRows').value) || 3;
+                const c = parseInt(document.getElementById('customCols').value) || 3;
+                let html = '';
+                for (let i=0; i < r*c; i++) html += `<div class="border border-slate-200 p-0.5">${mk(stagedDataUrls[i%stagedDataUrls.length] || first)}</div>`;
+                slot.innerHTML = `<div class="grid gap-1 w-full h-full" style="grid-template-columns: repeat(${c}, 1fr); grid-template-rows: repeat(${r}, 1fr);">${html}</div>`;
             } else if (activeLayout === '4_grid') {
-                slot.innerHTML = `<div class="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full p-1">${Array(4).fill(0).map((_, i) => `<div class="overflow-hidden border border-slate-200 rounded-xs">${makeImg(stagedDataUrls[i] || first)}</div>`).join('')}</div>`;
+                slot.innerHTML = `<div class="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">${Array(4).fill(0).map((_,i)=>`<div>${mk(stagedDataUrls[i]||first)}</div>`).join('')}</div>`;
+            } else if (activeLayout === '2_tb') {
+                slot.innerHTML = `<div class="grid grid-rows-2 gap-1 w-full h-full"><div>${mk(first)}</div><div>${mk(stagedDataUrls[1]||first)}</div></div>`;
             } else {
-                slot.innerHTML = `<div class="w-full h-full overflow-hidden flex items-center justify-center">${makeImg(first)}</div>`;
+                slot.innerHTML = `<div>${mk(first)}</div>`;
             }
         }
 
         async function submitPrintOrder() {
-            if (!stagedFiles.length) return alert('Please choose one or more images first!');
-
-            const copies = document.getElementById('copiesCount').value;
+            if (!stagedFiles.length) return alert('Select files first!');
             const priceText = document.getElementById('priceDisplay').textContent.replace('₹', '');
             
             const fd = new FormData();
             stagedFiles.forEach(f => fd.append('files', f));
             fd.append('layout', activeLayout);
-            if (activeLayout === 'custom') {
-                fd.append('custom_rows', document.getElementById('customRows').value);
-                fd.append('custom_cols', document.getElementById('customCols').value);
-            }
-            fd.append('copies', copies);
+            fd.append('copies', document.getElementById('copiesCount').value);
             fd.append('color_mode', selectedColorMode);
             fd.append('print_side', selectedPrintSide);
-            fd.append('paper_size', document.getElementById('paperSizeSelect').value);
-            fd.append('media_type', document.getElementById('mediaTypeSelect').value);
-            fd.append('border', document.getElementById('borderSelect').value);
             fd.append('total_price', priceText);
 
             const res = await fetch('/upload', { method: 'POST', body: fd });
@@ -637,12 +356,9 @@
                 activeJobId = data.job.id;
                 document.getElementById('orderIdBadge').textContent = `Order #${activeJobId}`;
                 document.getElementById('modalPrice').textContent = `₹${priceText}`;
-
                 const upiString = `upi://pay?pa=${config.upi_id}&pn=${encodeURIComponent(config.payee_name)}&am=${priceText}&cu=INR`;
-                const qrel = document.getElementById('qrcode');
-                qrel.innerHTML = '';
-                new QRCode(qrel, { text: upiString, width: 130, height: 130 });
-
+                document.getElementById('qrcode').innerHTML = '';
+                new QRCode(document.getElementById('qrcode'), { text: upiString, width: 130, height: 130 });
                 document.getElementById('payModal').classList.remove('hidden');
                 pollProgress(activeJobId);
             }
@@ -654,25 +370,13 @@
                 const res = await fetch(`/api/job/${jobId}`);
                 if (!res.ok) return;
                 const job = await res.json();
-
-                const circle = document.getElementById('statusCircle');
-                const msg = document.getElementById('statusMessage');
-                const hint = document.getElementById('statusHint');
-                const closeBtn = document.getElementById('closeModalBtn');
-
-                if (job.print_status === 'Waiting') {
-                    circle.className = 'h-2.5 w-2.5 rounded-full bg-amber-400 animate-ping';
-                    msg.textContent = 'Waiting for counter approval...';
-                    hint.textContent = 'Show transaction verification at the counter.';
-                } else if (job.print_status === 'Printing') {
-                    circle.className = 'h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse';
-                    msg.textContent = 'Printing Document...';
-                    hint.textContent = 'Canon G3010 is printing your pages.';
+                if (job.print_status === 'Printing') {
+                    document.getElementById('statusMessage').textContent = 'Printing Document...';
+                    document.getElementById('statusCircle').className = 'h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse';
                 } else if (job.print_status === 'Completed') {
-                    circle.className = 'h-2.5 w-2.5 rounded-full bg-emerald-500';
-                    msg.textContent = 'Print Complete!';
-                    hint.textContent = 'Collect your sheets from the output tray.';
-                    closeBtn.classList.remove('hidden');
+                    document.getElementById('statusMessage').textContent = 'Print Complete!';
+                    document.getElementById('statusCircle').className = 'h-2.5 w-2.5 rounded-full bg-emerald-500';
+                    document.getElementById('closeModalBtn').classList.remove('hidden');
                     clearInterval(pollTimer);
                 }
             }, 2000);
