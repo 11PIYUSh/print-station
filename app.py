@@ -19,7 +19,6 @@ DEFAULT_CONFIG = {
     'upi_id': 'piyush@upi',
     'payee_name': 'PIYUSH',
     'printer_ip': '192.168.1.15',
-    'printer_port': 631,
     'logo_url': '/static/logo.png',
     'rates': {'bw_single': 2.0, 'bw_double': 5.0, 'color_single': 5.0, 'color_double': 0.50},
     'paper_rates': {'A4': 0.0, 'Letter': 0.0, 'Legal': 1.0, 'A5': 0.0, 'B5': 0.0, '4x6': 10.0, '5x7': 15.0, 'Card': 5.0},
@@ -49,7 +48,7 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-# ================= HIGH-END RENDER ENGINE =================
+# ================= RENDER ENGINE =================
 def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
     if fit_mode == 'cover':
         img = ImageOps.fit(img, (cell_w, cell_h), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
@@ -123,24 +122,21 @@ def build_print_sheet(job):
 
     if not images: return None, None
 
-    # ONLY repeat images if layout is passport
     repeat_images = True if layout == 'passport' else False
 
     img_idx = 0
     for r in range(rows):
         for c in range(cols):
-            # Stop filling slots if we run out of uploaded images and it's NOT a passport
             if img_idx >= len(images):
                 if repeat_images and len(images) > 0:
                     src_img = images[img_idx % len(images)]
                 else:
                     img_idx += 1
-                    continue # Leave this cell completely blank
+                    continue
             else:
                 src_img = images[img_idx]
                 
             img_idx += 1
-            
             cell_img = process_cell_image(src_img, cell_w, cell_h, fit_mode, zoom)
             x = margin + c * (cell_w + cell_gap)
             y = margin + r * (cell_h + cell_gap)
@@ -178,7 +174,6 @@ def update_admin_config():
     for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip']:
         if key in data and str(data[key]).strip(): SETTINGS[key] = str(data[key]).strip()
     
-    if 'printer_port' in data: SETTINGS['printer_port'] = int(data['printer_port'])
     if 'rates' in data: SETTINGS['rates'].update({k: float(v) for k, v in data['rates'].items()})
     if 'paper_rates' in data: SETTINGS['paper_rates'].update({k: float(v) for k, v in data['paper_rates'].items()})
     if 'layout_rates' in data: SETTINGS['layout_rates'].update({k: float(v) for k, v in data['layout_rates'].items()})
@@ -329,15 +324,21 @@ def print_ready(filename, filetype, job_id):
             <title>Duplex Print - Order #{job_id}</title>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; }}
+                body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; margin: 0; }}
                 .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
                 .btn-green {{ background: #16a34a; }}
                 .btn-red {{ background: #dc2626; }}
                 .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 20px auto; display: block; border-radius: 8px; }}
+                
                 @media print {{
-                    body * {{ visibility: hidden; }}
-                    .img-preview {{ visibility: visible; position: absolute; left: 0; top: 0; width: 100vw; height: 99vh; object-fit: contain; margin: 0; border: none; }}
-                    @page {{ margin: 0; size: auto; }}
+                    body * {{ visibility: hidden; display: none; }}
+                    @page {{ margin: 0; }}
+                    html, body {{ margin: 0 !important; padding: 0 !important; height: 100%; overflow: hidden; display: block; }}
+                    .img-preview {{ 
+                        visibility: visible; display: block; position: absolute; left: 0; top: 0; 
+                        width: 100%; height: 100%; max-width: 100%; max-height: 100%;
+                        object-fit: contain; margin: 0; border: none; border-radius: 0;
+                    }}
                 }}
             </style>
         </head>
@@ -379,9 +380,18 @@ def print_ready(filename, filetype, job_id):
     <head>
         <title>Secure Print - Order #{job_id}</title>
         <style>
-            @page {{ margin: 0; size: auto; }}
-            html, body {{ margin: 0; padding: 0; width: 100vw; height: 99vh; background: #fff; overflow: hidden; }}
-            img {{ width: 100%; height: 100%; object-fit: contain; display: block; page-break-inside: avoid; }}
+            @page {{ margin: 0; }}
+            html, body {{ 
+                margin: 0 !important; padding: 0 !important; 
+                width: 100%; height: 100%; 
+                overflow: hidden; background: #fff; display: block; 
+            }}
+            img {{ 
+                width: 100%; height: 100%; 
+                max-width: 100%; max-height: 100%; 
+                object-fit: contain; display: block; 
+                margin: 0; padding: 0; page-break-inside: avoid; 
+            }}
         </style>
     </head>
     <body>
