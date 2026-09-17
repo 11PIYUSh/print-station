@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Satya Xerox — Online Print Portal</title>
+    <title>Piush Xerox — Online Print Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -18,9 +18,9 @@
     <header class="bg-[#000000]/95 border-b border-zinc-800 sticky top-0 z-40 backdrop-blur-md">
         <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-                <img id="shopLogo" src="/static/logo.png" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=satya'" class="h-9 w-9 rounded-xl object-contain border border-zinc-800 bg-zinc-900 p-0.5">
+                <img id="shopLogo" src="/static/logo.png" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=piush'" class="h-9 w-9 rounded-xl object-contain border border-zinc-800 bg-zinc-900 p-0.5">
                 <div>
-                    <h1 id="shopTitle" class="text-sm font-bold text-white leading-tight">PIUSH Xerox</h1>
+                    <h1 id="shopTitle" class="text-sm font-bold text-white leading-tight">Piush Xerox</h1>
                     <p id="shopSub" class="text-[9px] tracking-wider text-zinc-400 font-semibold uppercase">ONLINE PRINT PORTAL</p>
                 </div>
             </div>
@@ -114,7 +114,6 @@
                 </div>
             </div>
 
-            <!-- RESTORED ALL PAPER SIZES & MEDIA TYPES -->
             <div class="border border-zinc-800 rounded-2xl p-3.5 bg-zinc-950/60 space-y-3">
                 <span class="text-[11px] font-bold text-zinc-300 block">Printer Media & Paper Settings:</span>
                 <div class="grid grid-cols-2 gap-2 text-xs">
@@ -249,7 +248,7 @@
 
         async function init() {
             try { config = await (await fetch('/api/config')).json(); } catch {}
-            document.getElementById('shopTitle').textContent = config.shop_name || 'Satya Xerox';
+            document.getElementById('shopTitle').textContent = config.shop_name || 'Piush Xerox';
             if (config.logo_url) document.getElementById('shopLogo').src = config.logo_url;
             recalc();
         }
