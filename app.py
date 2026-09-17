@@ -1,9 +1,6 @@
 import os
 import re
-import io
 import json
-import socket
-import urllib.request
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
@@ -19,12 +16,10 @@ CONFIG_FILE = 'settings.json'
 DEFAULT_CONFIG = {
     'shop_name': 'Piush Xerox',
     'tagline': 'ONLINE PRINT PORTAL',
-    'upi_id': 'piush@upi',
-    'payee_name': 'PIUSH',
+    'upi_id': 'piyush@upi',
+    'payee_name': 'PIYUSH',
     'printer_ip': '192.168.1.15',
-    'printer_port': 9100,
-    'printer_protocol': 'RAW',  # Options: 'RAW' or 'IPP'
-    'printer_format': 'PDF',    # Options: 'PDF' or 'JPEG'
+    'printer_port': 631,
     'logo_url': '/static/logo.png',
     'rates': {'bw_single': 2.0, 'bw_double': 5.0, 'color_single': 5.0, 'color_double': 0.50},
     'paper_rates': {'A4': 0.0, 'Letter': 0.0, 'Legal': 1.0, 'A5': 0.0, 'B5': 0.0, '4x6': 10.0, '5x7': 15.0, 'Card': 5.0},
@@ -54,13 +49,13 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-# ================= DIRECT BACKEND PRINT ENGINE =================
+# ================= HIGH-END RENDER ENGINE =================
 def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
     if fit_mode == 'cover':
         img = ImageOps.fit(img, (cell_w, cell_h), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
     elif fit_mode == 'fill':
         img = img.resize((cell_w, cell_h), Image.Resampling.LANCZOS)
-    else:
+    else: 
         img = ImageOps.pad(img, (cell_w, cell_h), color=(255, 255, 255))
         
     if zoom != 1.0:
@@ -69,21 +64,27 @@ def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
         left = (zw - cell_w) // 2
         top = (zh - cell_h) // 2
         img = img.crop((left, top, left + cell_w, top + cell_h))
+        
     return img
 
-def compile_job_canvas(job):
+def build_print_sheet(job):
     filenames = job.get('filenames', [])
-    if not filenames: return None
+    if not filenames: return None, None
+
+    if job['primary_file'].lower().endswith('.pdf'):
+        return job['primary_file'], 'pdf'
 
     dimensions = {
         'A4': (2480, 3508), 'Letter': (2550, 3300), 'Legal': (2550, 4200),
-        '4x6': (1200, 1800), '5x7': (1500, 2100), 'Card': (651, 1074)
+        '4x6': (1200, 1800), '5x7': (1500, 2100), 'Card': (651, 1074),
+        'A5': (1748, 2480), 'B5': (2079, 2953)
     }
     canvas_w, canvas_h = dimensions.get(job.get('paper_size', 'A4'), (2480, 3508))
     canvas = Image.new('RGB', (canvas_w, canvas_h), color=(255, 255, 255))
     
     layout = job.get('layout', '1_photo')
     rows, cols = 1, 1
+    
     if layout == '1_full': rows, cols = 1, 1
     elif layout == '2_tb': rows, cols = 2, 1
     elif layout == '2_lr': rows, cols = 1, 2
@@ -98,8 +99,10 @@ def compile_job_canvas(job):
     rotation = int(job.get('rotation', 0))
     grid_gap = int(job.get('grid_gap', 40))
     
-    margin = 0 if job.get('border', 'Bordered') == 'Borderless' else grid_gap
-    cell_gap = 0 if job.get('border', 'Bordered') == 'Borderless' else grid_gap
+    if job.get('border', 'Bordered') == 'Borderless':
+        margin, cell_gap = 0, 0
+    else:
+        margin, cell_gap = grid_gap, grid_gap
 
     usable_w = canvas_w - (margin * 2)
     usable_h = canvas_h - (margin * 2)
@@ -112,77 +115,49 @@ def compile_job_canvas(job):
             path = os.path.join(app.config['UPLOAD_FOLDER'], fn)
             img = Image.open(path)
             img = ImageOps.exif_transpose(img)
-            img = img.convert('L').convert('RGB') if job.get('color_mode') == 'bw' else img.convert('RGB')
-            if rotation != 0:
-                img = img.rotate(-rotation, expand=True, fillcolor=(255, 255, 255))
+            if job.get('color_mode') == 'bw': img = img.convert('L').convert('RGB')
+            else: img = img.convert('RGB')
+            if rotation != 0: img = img.rotate(-rotation, expand=True, fillcolor=(255, 255, 255))
             images.append(img)
         except Exception: pass
 
-    if not images: return None
+    if not images: return None, None
+
+    # ONLY repeat images if layout is passport
+    repeat_images = True if layout == 'passport' else False
 
     img_idx = 0
     for r in range(rows):
         for c in range(cols):
-            src_img = images[img_idx % len(images)]
+            # Stop filling slots if we run out of uploaded images and it's NOT a passport
+            if img_idx >= len(images):
+                if repeat_images and len(images) > 0:
+                    src_img = images[img_idx % len(images)]
+                else:
+                    img_idx += 1
+                    continue # Leave this cell completely blank
+            else:
+                src_img = images[img_idx]
+                
             img_idx += 1
+            
             cell_img = process_cell_image(src_img, cell_w, cell_h, fit_mode, zoom)
             x = margin + c * (cell_w + cell_gap)
             y = margin + r * (cell_h + cell_gap)
             canvas.paste(cell_img, (x, y))
 
-    return canvas
-
-def transmit_to_printer(file_bytes, ip, port, protocol, data_format):
-    """Multi-Protocol print dispatcher based on Admin Panel settings."""
-    if protocol == 'RAW':
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(15.0)
-            sock.connect((ip, int(port)))
-            sock.sendall(file_bytes)
-            sock.close()
-            return True, f"Sent via RAW Port {port}"
-        except Exception as e:
-            return False, f"RAW Socket Error: {str(e)}"
-            
-    elif protocol == 'IPP':
-        try:
-            url = f"http://{ip}:{port}/ipp/print"
-            ipp_req = bytearray([0x02, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x01, 0x01])
-            
-            def add_attr(tag, name, value):
-                ipp_req.append(tag)
-                ipp_req.extend(len(name).to_bytes(2, 'big'))
-                ipp_req.extend(name.encode())
-                val_b = value.encode() if isinstance(value, str) else value
-                ipp_req.extend(len(val_b).to_bytes(2, 'big'))
-                ipp_req.extend(val_b)
-                
-            add_attr(0x47, 'attributes-charset', 'utf-8')
-            add_attr(0x48, 'attributes-natural-language', 'en')
-            add_attr(0x45, 'printer-uri', f'ipp://{ip}:{port}/ipp/print')
-            add_attr(0x42, 'requesting-user-name', 'PiushAdmin')
-            
-            mime_type = 'application/pdf' if data_format == 'PDF' else 'image/jpeg'
-            add_attr(0x49, 'document-format', mime_type)
-            ipp_req.append(0x03)
-            
-            payload = bytes(ipp_req) + file_bytes
-            req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/ipp'})
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                if resp.status in [200, 201]:
-                    return True, "Sent via IPP Protocol"
-                else:
-                    return False, f"IPP Rejected (Status {resp.status})"
-        except Exception as e:
-            return False, f"IPP Error: {str(e)}"
-    
-    return False, "Unknown Protocol"
+    out_name = f"compiled_job_{job['id']}.jpg"
+    out_path = os.path.join(app.config['STATIC_FOLDER'], out_name)
+    canvas.save(out_path, format='JPEG', quality=95, optimize=True)
+    return out_name, 'image'
 
 def secure_shred(job):
     for fn in job.get('filenames', []):
         try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], fn))
         except: pass
+    compiled_name = f"compiled_job_{job.get('id', 0)}.jpg"
+    try: os.remove(os.path.join(app.config['STATIC_FOLDER'], compiled_name))
+    except: pass
 
 # ================= APP ROUTES =================
 @app.route('/')
@@ -200,12 +175,10 @@ def get_config(): return jsonify(SETTINGS)
 @app.route('/api/admin/config/update', methods=['POST'])
 def update_admin_config():
     data = request.json or {}
+    for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip']:
+        if key in data and str(data[key]).strip(): SETTINGS[key] = str(data[key]).strip()
     
-    # Save network settings
-    for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip', 'printer_port', 'printer_protocol', 'printer_format']:
-        if key in data and str(data[key]).strip(): 
-            SETTINGS[key] = str(data[key]).strip()
-            
+    if 'printer_port' in data: SETTINGS['printer_port'] = int(data['printer_port'])
     if 'rates' in data: SETTINGS['rates'].update({k: float(v) for k, v in data['rates'].items()})
     if 'paper_rates' in data: SETTINGS['paper_rates'].update({k: float(v) for k, v in data['paper_rates'].items()})
     if 'layout_rates' in data: SETTINGS['layout_rates'].update({k: float(v) for k, v in data['layout_rates'].items()})
@@ -224,33 +197,34 @@ def upload_logo():
     save_settings(SETTINGS)
     return jsonify({'success': True, 'logo_url': SETTINGS['logo_url']})
 
-# ================= HARDWARE DIAGNOSTICS =================
-@app.route('/api/admin/test/<test_type>', methods=['POST'])
-def run_hardware_test(test_type):
-    ip = SETTINGS.get('printer_ip', '192.168.1.15')
-    port = SETTINGS.get('printer_port', 9100)
-    protocol = SETTINGS.get('printer_protocol', 'RAW')
-    fmt = SETTINGS.get('printer_format', 'PDF')
-
+# ================= HARDWARE TEST ROUTES =================
+@app.route('/api/admin/test/blank', methods=['POST'])
+def test_print_blank():
     try:
-        canvas = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
-        if test_type == 'image':
-            draw = ImageDraw.Draw(canvas)
-            draw.rectangle([100, 100, 2380, 3408], outline=(0, 0, 0), width=6)
-            colors = [(0, 255, 255), (255, 0, 255), (255, 255, 0), (0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
-            start_y = 600
-            for col in colors:
-                draw.rectangle([300, start_y, 2180, start_y + 150], fill=col, outline=(0, 0, 0), width=2)
-                start_y += 220
+        blank_im = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
+        filename = f"test_blank_{int(datetime.now().timestamp())}.jpg"
+        filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
+        blank_im.save(filepath, format='JPEG', quality=85)
+        return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
-        buf = io.BytesIO()
-        if fmt == 'PDF':
-            canvas.save(buf, format='PDF', resolution=300)
-        else:
-            canvas.save(buf, format='JPEG', quality=95)
-            
-        success, msg = transmit_to_printer(buf.getvalue(), ip, port, protocol, fmt)
-        return jsonify({'success': success, 'message': msg, 'error': msg if not success else None})
+@app.route('/api/admin/test/image', methods=['POST'])
+def test_print_image():
+    try:
+        test_im = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
+        draw = ImageDraw.Draw(test_im)
+        draw.rectangle([100, 100, 2380, 3408], outline=(0, 0, 0), width=6)
+        colors = [(0, 255, 255), (255, 0, 255), (255, 255, 0), (0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
+        start_y = 600
+        for col in colors:
+            draw.rectangle([300, start_y, 2180, start_y + 150], fill=col, outline=(0, 0, 0), width=2)
+            start_y += 220
+
+        filename = f"test_color_{int(datetime.now().timestamp())}.jpg"
+        filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
+        test_im.save(filepath, format='JPEG', quality=90)
+        return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -310,43 +284,17 @@ def verify_and_print(job_id):
     if not target: return jsonify({'error': 'Job not found'}), 404
 
     target['payment_status'] = 'Paid'
-    target['print_status'] = 'Printing'
-
-    ip = SETTINGS.get('printer_ip', '192.168.1.15')
-    port = SETTINGS.get('printer_port', 9100)
-    protocol = SETTINGS.get('printer_protocol', 'RAW')
-    fmt = SETTINGS.get('printer_format', 'PDF')
 
     try:
-        if target['primary_file'].lower().endswith('.pdf'):
-            with open(os.path.join(app.config['UPLOAD_FOLDER'], target['primary_file']), 'rb') as f:
-                payload_bytes = f.read()
-            # Force PDF protocol
-            fmt = 'PDF'
-        else:
-            canvas = compile_job_canvas(target)
-            if not canvas: return jsonify({'success': False, 'error': 'Failed to build image.'}), 200
+        filename, ftype = build_print_sheet(target)
+        if not filename: return jsonify({'success': False, 'error': 'Failed to process files.'}), 200
             
-            buf = io.BytesIO()
-            if fmt == 'PDF':
-                canvas.save(buf, format='PDF', resolution=300)
-            else:
-                canvas.save(buf, format='JPEG', quality=95)
-            payload_bytes = buf.getvalue()
-
-        # Transmit
-        for _ in range(int(target.get('copies', 1))):
-            success, msg = transmit_to_printer(payload_bytes, ip, port, protocol, fmt)
-            if not success:
-                target['print_status'] = 'Failed'
-                return jsonify({'success': False, 'error': msg}), 200
-
-        secure_shred(target)
-        target['print_status'] = 'Securely Erased'
-        return jsonify({'success': True, 'message': 'Direct Print Dispatched'})
-
+        target['print_status'] = 'Completed'
+        return jsonify({
+            'success': True, 
+            'url': f"/print_ready/{filename}/{ftype}/{target['id']}",
+        })
     except Exception as e:
-        target['print_status'] = 'Failed'
         return jsonify({'success': False, 'error': str(e)}), 200
 
 @app.route('/api/jobs/secure_delete/<int:job_id>', methods=['POST'])
@@ -356,6 +304,99 @@ def manual_secure_delete(job_id):
         secure_shred(target)
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
+
+# ================= THE WORKING PRINT BRIDGE TAB =================
+@app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
+def print_ready(filename, filetype, job_id):
+    target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
+    print_side = target.get('print_side', 'single')
+
+    if filetype == 'pdf':
+        return f"""
+        <script>
+            if ("{print_side}" === "double") {{
+                alert("MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages' in the dialog.\\n2. Turn the pages and place them back in the tray.\\n3. Choose 'Print Even Pages'.");
+            }}
+            window.location.href="/uploads/{filename}";
+        </script>
+        """
+
+    if print_side == 'double':
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Duplex Print - Order #{job_id}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; }}
+                .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
+                .btn-green {{ background: #16a34a; }}
+                .btn-red {{ background: #dc2626; }}
+                .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 20px auto; display: block; border-radius: 8px; }}
+                @media print {{
+                    body * {{ visibility: hidden; }}
+                    .img-preview {{ visibility: visible; position: absolute; left: 0; top: 0; width: 100vw; height: 99vh; object-fit: contain; margin: 0; border: none; }}
+                    @page {{ margin: 0; size: auto; }}
+                }}
+            </style>
+        </head>
+        <body>
+            <h2 style="margin-bottom: 5px;">Manual Duplex Mode</h2>
+            <img src="/static/{filename}" class="img-preview">
+            
+            <div id="step1">
+                <p style="color:#60a5fa; font-size: 18px; margin-top: 0;">Step 1: Print the Front Side</p>
+                <button class="btn" onclick="window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
+            </div>
+            
+            <div id="step2" style="display:none;">
+                <p style="color:#fbbf24; font-size: 22px; font-weight: bold; margin-bottom: 5px;">⚠️ TURN THE PAGE NOW!</p>
+                <p style="margin-top: 0; font-size: 16px; color: #a1a1aa;">Take the printed sheet out, flip it over, and re-insert it into the printer.</p>
+                <button class="btn btn-green" onclick="window.print(); document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='block';">🖨️ Print Back Side</button>
+            </div>
+
+            <div id="step3" style="display:none;">
+                <p style="color:#4ade80; font-size: 18px; font-weight: bold;">✅ Printing Complete</p>
+                <button class="btn btn-red" onclick="shredAndClose()">🗑️ Shred Data & Close Tab</button>
+            </div>
+
+            <script>
+                async function shredAndClose() {{
+                    if({job_id} !== 0) {{
+                        try {{ await fetch(`/api/jobs/secure_delete/{job_id}`, {{method: 'POST'}}); }} catch(e) {{}}
+                    }}
+                    window.close();
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Secure Print - Order #{job_id}</title>
+        <style>
+            @page {{ margin: 0; size: auto; }}
+            html, body {{ margin: 0; padding: 0; width: 100vw; height: 99vh; background: #fff; overflow: hidden; }}
+            img {{ width: 100%; height: 100%; object-fit: contain; display: block; page-break-inside: avoid; }}
+        </style>
+    </head>
+    <body>
+        <img src="/static/{filename}">
+        <script>
+            window.onload = () => {{
+                setTimeout(() => {{ window.print(); }}, 500);
+            }};
+            window.addEventListener('afterprint', () => {{
+                if({job_id} !== 0) fetch(`/api/jobs/secure_delete/{job_id}`, {{method: 'POST'}});
+            }});
+        </script>
+    </body>
+    </html>
+    """
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

@@ -17,12 +17,12 @@
                 <img id="adminLogo" src="/static/logo.png" onerror="this.src='https://api.dicebear.com/7.x/shapes/svg?seed=piush'" class="h-11 w-11 rounded-2xl object-contain border border-zinc-800 bg-zinc-900 p-1 shadow-sm">
                 <div>
                     <h1 class="text-lg font-bold text-white leading-tight">Admin Station Control</h1>
-                    <p class="text-xs text-zinc-400">Configure connection settings, verify jobs & test hardware</p>
+                    <p class="text-xs text-zinc-400">Configure rates, verify jobs & protect customer privacy</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 border border-zinc-800 rounded-full text-xs shadow-sm">
+            <div class="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-950 border border-emerald-800 rounded-full text-xs shadow-sm">
                 <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span class="text-emerald-300 font-bold">Direct Print Bridge Active</span>
+                <span class="text-emerald-300 font-bold">Privacy Bridge Online</span>
             </div>
         </header>
 
@@ -30,13 +30,13 @@
         <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
                 <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400">Hardware Test Actions</h3>
-                <p class="text-xs text-zinc-400 mt-0.5">Push diagnostic sheets using the Direct Connection Manager</p>
+                <p class="text-xs text-zinc-400 mt-0.5">Generate and dispatch test sheets via Print Bridge</p>
             </div>
             <div class="flex items-center gap-3 w-full sm:w-auto">
-                <button type="button" id="btnTestBlank" onclick="runDiagnostic('blank')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition flex items-center justify-center gap-2 shadow-sm">
+                <button type="button" onclick="runDiagnostic('blank')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition flex items-center justify-center gap-2 shadow-sm">
                     <span>📄</span> Print Blank Test
                 </button>
-                <button type="button" id="btnTestImage" onclick="runDiagnostic('image')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-blue-600/80 bg-blue-600/20 hover:bg-blue-600/30 text-xs font-bold text-blue-400 transition flex items-center justify-center gap-2 shadow-sm">
+                <button type="button" onclick="runDiagnostic('image')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-blue-600/80 bg-blue-600/20 hover:bg-blue-600/30 text-xs font-bold text-blue-400 transition flex items-center justify-center gap-2 shadow-sm">
                     <span>🎨</span> Print Color Test
                 </button>
             </div>
@@ -45,6 +45,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             <section class="lg:col-span-5 space-y-5">
+                
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
                     <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Store Profile</h2>
                     <div class="space-y-3 text-xs">
@@ -63,38 +64,21 @@
                     </div>
                 </div>
 
-                <!-- NEW CONNECTION SETTINGS MANAGER -->
+                <!-- NEW: Dedicated Printer Connection Block -->
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400">Direct Printer Connection</h2>
-                    <p class="text-[10px] text-zinc-400 mb-2 border-b border-zinc-800 pb-2">Modify these settings if your printer changes in the future.</p>
-                    
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400">Printer Connection Settings</h2>
                     <div class="space-y-3 text-xs">
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-zinc-400 mb-1 font-medium">Printer IP Address</label>
-                                <input type="text" id="printerIpInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
-                            </div>
-                            <div>
-                                <label class="block text-zinc-400 mb-1 font-medium">Port Number</label>
-                                <input type="number" id="printerPortInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
-                            </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Printer IP Address</label>
+                            <input type="text" id="printerIpInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500">
                         </div>
-                        
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-zinc-400 mb-1 font-medium">Connection Protocol</label>
-                                <select id="printerProtocolInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
-                                    <option value="RAW">TCP RAW (Standard)</option>
-                                    <option value="IPP">IPP / AirPrint</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-zinc-400 mb-1 font-medium">Transmission Format</label>
-                                <select id="printerFormatInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
-                                    <option value="PDF">PDF Document</option>
-                                    <option value="JPEG">JPEG Image</option>
-                                </select>
-                            </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Connection Type / Port</label>
+                            <select id="printerPortSelect" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-amber-500">
+                                <option value="631">AirPrint IPP (Port 631)</option>
+                                <option value="9100">TCP RAW (Port 9100)</option>
+                            </select>
+                            <p class="text-[9px] text-zinc-500 mt-1">Leave default unless connecting a non-AirPrint host printer.</p>
                         </div>
                     </div>
                 </div>
@@ -138,7 +122,7 @@
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-4">
                     <div class="flex justify-between items-center pb-2 border-b border-zinc-800">
                         <div>
-                            <h2 class="text-sm font-bold text-white">Direct Print Queue</h2>
+                            <h2 class="text-sm font-bold text-white">Secure Print Queue</h2>
                             <p class="text-xs text-zinc-400" id="totalRevDisplay">Total Settled: ₹0.00</p>
                         </div>
                         <button onclick="loadJobs()" class="text-xs bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg font-semibold text-zinc-200 transition">Refresh</button>
@@ -164,12 +148,9 @@
                 
                 document.getElementById('shopNameInput').value = data.shop_name || '';
                 document.getElementById('upiIdInput').value = data.upi_id || '';
+                document.getElementById('printerIpInput').value = data.printer_ip || '';
+                if(data.printer_port) document.getElementById('printerPortSelect').value = data.printer_port;
                 if (data.logo_url) document.getElementById('adminLogo').src = data.logo_url;
-                
-                document.getElementById('printerIpInput').value = data.printer_ip || '192.168.1.15';
-                document.getElementById('printerPortInput').value = data.printer_port || 9100;
-                document.getElementById('printerProtocolInput').value = data.printer_protocol || 'RAW';
-                document.getElementById('printerFormatInput').value = data.printer_format || 'PDF';
 
                 if (data.rates) {
                     document.getElementById('bwSingleInput').value = data.rates.bw_single;
@@ -196,24 +177,16 @@
         }
 
         async function runDiagnostic(type) {
-            const btn = type === 'blank' ? document.getElementById('btnTestBlank') : document.getElementById('btnTestImage');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<span>⏳</span> Sending...`;
-            btn.disabled = true;
-
             try {
                 const res = await fetch(`/api/admin/test/${type}`, { method: 'POST' });
-                const text = await res.text();
-                let data;
-                try { data = JSON.parse(text); } catch (e) { data = { error: text.slice(0, 150) }; }
-
-                if (res.ok && data.success) alert(`✅ ${data.message}`);
-                else alert(`❌ Dispatch Failed: ${data.error}`);
+                const data = await res.json();
+                if (data.success) {
+                    window.open(data.url, '_blank');
+                } else {
+                    alert("Error: " + data.error);
+                }
             } catch(e) {
                 alert("Network error: " + e.message);
-            } finally {
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
             }
         }
 
@@ -235,9 +208,7 @@
                 shop_name: document.getElementById('shopNameInput').value,
                 upi_id: document.getElementById('upiIdInput').value,
                 printer_ip: document.getElementById('printerIpInput').value,
-                printer_port: parseInt(document.getElementById('printerPortInput').value) || 9100,
-                printer_protocol: document.getElementById('printerProtocolInput').value,
-                printer_format: document.getElementById('printerFormatInput').value,
+                printer_port: document.getElementById('printerPortSelect').value,
                 rates: {
                     bw_single: parseFloat(document.getElementById('bwSingleInput').value) || 2,
                     color_single: parseFloat(document.getElementById('colorSingleInput').value) || 5,
@@ -261,7 +232,7 @@
                 }
             };
             const res = await fetch('/api/admin/config/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) alert('All connection settings & rates saved successfully!');
+            if (res.ok) alert('Settings saved successfully!');
         });
 
         async function loadJobs() {
@@ -299,8 +270,11 @@
                         ${j.print_status === 'Securely Erased' ? `
                             <span class="text-xs text-emerald-500 font-bold px-2 py-1 flex items-center gap-1">🛡️ Data Shredded</span>
                         ` : `
-                            <button onclick="approveAndPrint(${j.id}, this)" class="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg transition flex items-center gap-1.5">
-                                🖨️ Send to Printer
+                            <button onclick="approveAndPrint(${j.id})" class="px-4 py-2 text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg transition flex items-center gap-1.5">
+                                🖨️ Open Print Bridge
+                            </button>
+                            <button onclick="forceErase(${j.id})" class="px-3 py-2 text-xs font-bold border border-rose-900/50 bg-rose-950/30 hover:bg-rose-900 text-rose-400 rounded-xl transition">
+                                🗑️ Shred
                             </button>
                         `}
                     </div>
@@ -308,18 +282,26 @@
             `).join('');
         }
 
-        async function approveAndPrint(id, btn) {
+        async function approveAndPrint(id) {
+            const btn = event.currentTarget;
             const originalHtml = btn.innerHTML;
-            btn.innerHTML = `<span>⏳ Transmitting...</span>`;
+            btn.innerHTML = `<span>⏳ Preparing...</span>`;
             
             const res = await fetch(`/api/jobs/verify_and_print/${id}`, { method: 'POST' });
             const data = await res.json();
             
             if (!res.ok || !data.success) {
-                alert(`❌ Dispatch failed: ${data.error}`);
+                alert(`❌ Preparation failed: ${data.error}`);
                 btn.innerHTML = originalHtml;
             } else {
-                alert('✅ Sent directly to the printer! Files securely shredded.');
+                window.open(data.url, '_blank');
+                loadJobs();
+            }
+        }
+
+        async function forceErase(id) {
+            if(confirm("Permanently delete these files for privacy?")) {
+                await fetch(`/api/jobs/secure_delete/${id}`, { method: 'POST' });
                 loadJobs();
             }
         }
