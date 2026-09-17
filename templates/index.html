@@ -9,8 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .ratio-a4 { aspect-ratio: 1 / 1.414; }
         .is-bw { filter: grayscale(100%) contrast(115%); }
+        /* Smooth transitions for canvas reshaping */
+        #a4Canvas { transition: aspect-ratio 0.3s ease, padding 0.3s ease; }
     </style>
 </head>
 <body class="bg-[#09090B] text-zinc-100 min-h-screen flex flex-col justify-between antialiased selection:bg-blue-600 selection:text-white">
@@ -58,10 +59,10 @@
         <div id="screenImages" class="bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-4 shadow-xl space-y-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="text-base font-bold text-white">Print Images (A4)</h2>
+                    <h2 class="text-base font-bold text-white">Print Images</h2>
                     <p class="text-xs text-zinc-400">Upload multiple images, layout, crop & print</p>
                 </div>
-                <span id="selectedCountBadge" class="text-[10px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800 px-2 py-1 rounded-lg">0 Images Added</span>
+                <span id="selectedCountBadge" class="text-[10px] font-bold text-blue-400 bg-blue-950/60 border border-blue-800 px-2 py-1 rounded-lg">0 Images</span>
             </div>
 
             <label class="block border-2 border-dashed border-zinc-700 hover:border-blue-500 bg-zinc-950/60 rounded-2xl p-6 text-center cursor-pointer transition">
@@ -105,11 +106,11 @@
                 <div class="grid grid-cols-2 gap-3 text-xs">
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Rows (Vertical)</label>
-                        <select id="customRows" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Row</option><option value="2">2 Rows</option><option value="3" selected>3 Rows</option><option value="4">4 Rows</option><option value="5">5 Rows</option><option value="6">6 Rows</option></select>
+                        <select id="customRows" onchange="renderPreviewLayout()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Row</option><option value="2">2 Rows</option><option value="3" selected>3 Rows</option><option value="4">4 Rows</option><option value="5">5 Rows</option><option value="6">6 Rows</option></select>
                     </div>
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Columns (Horizontal)</label>
-                        <select id="customCols" onchange="updateCustomMatrix()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Column</option><option value="2">2 Columns</option><option value="3" selected>3 Columns</option><option value="4">4 Columns</option><option value="5">5 Columns</option><option value="6">6 Columns</option></select>
+                        <select id="customCols" onchange="renderPreviewLayout()" class="w-full bg-zinc-900 border border-cyan-800/60 rounded-xl p-2 text-xs text-zinc-200 outline-none"><option value="1">1 Column</option><option value="2">2 Columns</option><option value="3" selected>3 Columns</option><option value="4">4 Columns</option><option value="5">5 Columns</option><option value="6">6 Columns</option></select>
                     </div>
                 </div>
             </div>
@@ -119,7 +120,7 @@
                 <div class="grid grid-cols-2 gap-2 text-xs">
                     <div>
                         <label class="text-[10px] font-bold text-zinc-400 block mb-1">Paper Size</label>
-                        <select id="paperSizeSelect" onchange="recalc()" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
+                        <select id="paperSizeSelect" onchange="updateCanvasAspect()" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2 text-xs text-zinc-200 outline-none">
                             <option value="A4" selected>A4 Standard</option>
                             <option value="Letter">Letter 8.5"x11"</option>
                             <option value="Legal">Legal 8.5"x14"</option>
@@ -146,18 +147,44 @@
                 
                 <div class="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/80">
                     <div class="flex items-center gap-1">
+                        <select id="borderSelect" onchange="renderPreviewLayout()" class="bg-zinc-900 border border-zinc-800 rounded-xl p-1 text-[10px] text-zinc-200 outline-none mr-2">
+                            <option value="Bordered" selected>Bordered</option>
+                            <option value="Borderless">Borderless</option>
+                        </select>
                         <button type="button" onclick="setFit('contain')" id="fitContain" class="px-2 py-1 rounded text-[10px] font-semibold bg-blue-600 text-white">Fit</button>
                         <button type="button" onclick="setFit('cover')" id="fitCover" class="px-2 py-1 rounded text-[10px] font-semibold text-zinc-400">Fill</button>
                     </div>
                     <button type="button" onclick="rotateImage()" class="px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 text-[11px] font-semibold text-zinc-300">↻ Rotate</button>
                     <button type="button" onclick="clearSlot()" class="text-xs text-rose-400 font-semibold border border-rose-950 bg-rose-950/30 px-2.5 py-1.5 rounded-xl">🗑 Clear</button>
                 </div>
+                
+                <!-- Zoom & Gap Sliders -->
+                <div class="grid grid-cols-2 gap-4 pt-1">
+                    <div>
+                        <div class="flex justify-between text-[9px] font-bold text-zinc-400 mb-1">
+                            <span>IMAGE ZOOM</span>
+                            <span id="zoomLabel" class="text-blue-400">100%</span>
+                        </div>
+                        <input type="range" id="zoomSlider" min="50" max="200" value="100" class="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none accent-blue-600">
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[9px] font-bold text-zinc-400 mb-1">
+                            <span>GRID SPACING</span>
+                            <span id="gapLabel" class="text-blue-400">40px</span>
+                        </div>
+                        <input type="range" id="gapSlider" min="0" max="150" value="40" class="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none accent-blue-600">
+                    </div>
+                </div>
             </div>
 
             <div class="bg-[#000000] border border-zinc-800/90 rounded-2xl p-4 text-white space-y-3">
-                <h3 class="text-xs font-bold text-white border-b border-zinc-800 pb-2">Live Print Preview (WYSIWYG)</h3>
+                <div class="flex items-center justify-between text-xs border-b border-zinc-800 pb-2">
+                    <h3 class="font-bold text-white">Live Print Preview (WYSIWYG)</h3>
+                    <span id="canvasFormatLabel" class="text-[9px] text-zinc-500 font-bold bg-zinc-900 px-2 py-0.5 rounded-full">A4 Canvas</span>
+                </div>
                 <div class="flex justify-center p-3 bg-zinc-950 rounded-xl">
-                    <div id="a4Canvas" class="w-full max-w-[260px] ratio-a4 bg-white rounded-xs shadow-2xl p-3 flex items-center justify-center overflow-hidden border border-zinc-300">
+                    <!-- Dynamic Canvas Area -->
+                    <div id="a4Canvas" style="aspect-ratio: 1 / 1.414;" class="w-full max-w-[260px] bg-white rounded-xs shadow-2xl p-2 flex items-center justify-center overflow-hidden border border-zinc-300">
                         <div id="previewSlot" class="w-full h-full flex items-center justify-center overflow-hidden text-slate-400">
                             <span class="text-[10px] text-slate-400 text-center">Upload an image to preview layout</span>
                         </div>
@@ -244,7 +271,13 @@
     <script>
         let currentScreen = 'images', stagedFiles = [], stagedDataUrls = [];
         let config = {}, activeLayout = '1_photo', rotationAngle = 0, selectedColorMode = 'bw', selectedPrintSide = 'single', fitMode = 'contain';
+        let zoomScale = 1.0, gridGap = 40;
         let activeJobId = null, pollTimer = null;
+
+        const paperRatios = {
+            'A4': '1 / 1.414', 'Letter': '8.5 / 11', 'Legal': '8.5 / 14',
+            '4x6': '4 / 6', '5x7': '5 / 7', 'A5': '1 / 1.414', 'B5': '1 / 1.414', 'Card': '0.606 / 1'
+        };
 
         async function init() {
             try { config = await (await fetch('/api/config')).json(); } catch {}
@@ -259,6 +292,15 @@
             document.getElementById('screenDocument').classList.toggle('hidden');
             document.getElementById('switchBtnText').textContent = currentScreen === 'images' ? 'Print Document' : 'Print Images (A4)';
             document.getElementById('switchBtnIcon').textContent = currentScreen === 'images' ? '📄' : '🖼️';
+            recalc();
+        }
+
+        function updateCanvasAspect() {
+            const paper = document.getElementById('paperSizeSelect').value;
+            const canvas = document.getElementById('a4Canvas');
+            canvas.style.aspectRatio = paperRatios[paper] || '1 / 1.414';
+            document.getElementById('canvasFormatLabel').textContent = `${paper} Canvas`;
+            renderPreviewLayout();
             recalc();
         }
 
@@ -332,7 +374,18 @@
             renderPreviewLayout();
         }
 
-        function updateCustomMatrix() { renderPreviewLayout(); }
+        document.getElementById('zoomSlider').addEventListener('input', (e) => {
+            zoomScale = e.target.value / 100;
+            document.getElementById('zoomLabel').textContent = e.target.value + '%';
+            renderPreviewLayout();
+        });
+
+        document.getElementById('gapSlider').addEventListener('input', (e) => {
+            gridGap = parseInt(e.target.value);
+            document.getElementById('gapLabel').textContent = gridGap + 'px';
+            renderPreviewLayout();
+        });
+
         function rotateImage() { rotationAngle = (rotationAngle + 90) % 360; renderPreviewLayout(); }
 
         function clearSlot() {
@@ -374,27 +427,37 @@
         function renderPreviewLayout() {
             if (!stagedDataUrls.length) return;
             const bwClass = selectedColorMode === 'bw' ? 'is-bw' : '';
-            const mk = (url) => `<img src="${url}" style="object-fit:${fitMode}; transform:rotate(${rotationAngle}deg); width:100%; height:100%;" class="${bwClass}">`;
+            
+            // Adjust visual gap scale for the tiny preview canvas
+            const isBorderless = document.getElementById('borderSelect').value === 'Borderless';
+            const visualGap = isBorderless ? 0 : (gridGap / 10); 
+            
+            const canvas = document.getElementById('a4Canvas');
+            canvas.style.padding = visualGap + 'px';
+
+            const mk = (url) => `
+                <div style="overflow:hidden; width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                    <img src="${url}" style="object-fit:${fitMode}; transform:rotate(${rotationAngle}deg) scale(${zoomScale}); width:100%; height:100%;" class="${bwClass}">
+                </div>
+            `;
+            
             const first = stagedDataUrls[0];
             const slot = document.getElementById('previewSlot');
 
+            let r = 1, c = 1;
             if (activeLayout === 'custom') {
-                const r = parseInt(document.getElementById('customRows').value) || 3;
-                const c = parseInt(document.getElementById('customCols').value) || 3;
-                let html = '';
-                for (let i=0; i < r*c; i++) html += `<div class="border border-slate-200 p-0.5">${mk(stagedDataUrls[i%stagedDataUrls.length] || first)}</div>`;
-                slot.innerHTML = `<div class="grid gap-1 w-full h-full" style="grid-template-columns: repeat(${c}, 1fr); grid-template-rows: repeat(${r}, 1fr);">${html}</div>`;
-            } else if (activeLayout === 'passport') {
-                slot.innerHTML = `<div class="grid grid-cols-4 grid-rows-2 gap-1 w-full h-full">${Array(8).fill(0).map(()=>`<div>${mk(first)}</div>`).join('')}</div>`;
-            } else if (activeLayout === '4_grid') {
-                slot.innerHTML = `<div class="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full">${Array(4).fill(0).map((_,i)=>`<div>${mk(stagedDataUrls[i]||first)}</div>`).join('')}</div>`;
-            } else if (activeLayout === '2_tb') {
-                slot.innerHTML = `<div class="grid grid-rows-2 gap-1 w-full h-full"><div>${mk(first)}</div><div>${mk(stagedDataUrls[1]||first)}</div></div>`;
-            } else if (activeLayout === '2_lr') {
-                slot.innerHTML = `<div class="grid grid-cols-2 gap-1 w-full h-full"><div>${mk(first)}</div><div>${mk(stagedDataUrls[1]||first)}</div></div>`;
-            } else {
-                slot.innerHTML = `<div>${mk(first)}</div>`;
+                r = parseInt(document.getElementById('customRows').value) || 3;
+                c = parseInt(document.getElementById('customCols').value) || 3;
+            } else if (activeLayout === 'passport') { r = 4; c = 2; }
+            else if (activeLayout === '4_grid') { r = 2; c = 2; }
+            else if (activeLayout === '2_tb') { r = 2; c = 1; }
+            else if (activeLayout === '2_lr') { r = 1; c = 2; }
+
+            let html = '';
+            for (let i=0; i < r*c; i++) {
+                html += mk(stagedDataUrls[i%stagedDataUrls.length] || first);
             }
+            slot.innerHTML = `<div style="display:grid; grid-template-columns: repeat(${c}, 1fr); grid-template-rows: repeat(${r}, 1fr); gap: ${visualGap}px; width:100%; height:100%;">${html}</div>`;
         }
 
         async function submitPrintOrder() {
@@ -413,6 +476,11 @@
             fd.append('print_side', selectedPrintSide);
             fd.append('paper_size', document.getElementById('paperSizeSelect')?.value || 'A4');
             fd.append('media_type', document.getElementById('mediaTypeSelect')?.value || 'Plain Paper');
+            fd.append('border', document.getElementById('borderSelect').value);
+            fd.append('fit_mode', fitMode);
+            fd.append('zoom', zoomScale);
+            fd.append('rotation', rotationAngle);
+            fd.append('grid_gap', gridGap);
             fd.append('total_price', priceText);
 
             const res = await fetch('/upload', { method: 'POST', body: fd });

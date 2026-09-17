@@ -18,7 +18,7 @@ DEFAULT_CONFIG = {
     'tagline': 'ONLINE PRINT PORTAL',
     'upi_id': 'piyush@upi',
     'payee_name': 'PIYUSH',
-    'printer_ip': '192.168.1.16',
+    'printer_ip': '192.168.1.15',
     'logo_url': '/static/logo.png',
     'rates': {'bw_single': 2.0, 'bw_double': 5.0, 'color_single': 5.0, 'color_double': 0.50},
     'paper_rates': {'A4': 0.0, 'Letter': 0.0, 'Legal': 1.0, 'A5': 0.0, 'B5': 0.0, '4x6': 10.0, '5x7': 15.0, 'Card': 5.0},
@@ -48,8 +48,29 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-# ================= RENDER ENGINE =================
+# ================= HIGH-END RENDER ENGINE =================
+def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
+    """Processes an individual image to exactly match the frontend CSS preview."""
+    # 1. Fit to the cell boundaries
+    if fit_mode == 'cover':
+        img = ImageOps.fit(img, (cell_w, cell_h), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+    elif fit_mode == 'fill':
+        img = img.resize((cell_w, cell_h), Image.Resampling.LANCZOS)
+    else: # contain
+        img = ImageOps.pad(img, (cell_w, cell_h), color=(255, 255, 255))
+        
+    # 2. Apply CSS-style scale/zoom and center crop
+    if zoom != 1.0:
+        zw, zh = int(cell_w * zoom), int(cell_h * zoom)
+        img = img.resize((zw, zh), Image.Resampling.LANCZOS)
+        left = (zw - cell_w) // 2
+        top = (zh - cell_h) // 2
+        img = img.crop((left, top, left + cell_w, top + cell_h))
+        
+    return img
+
 def build_print_sheet(job):
+    """Compiles images onto a dynamic canvas respecting paper sizes, gaps, and zoom."""
     filenames = job.get('filenames', [])
     if not filenames: return None, None
 
@@ -58,11 +79,12 @@ def build_print_sheet(job):
 
     dimensions = {
         'A4': (2480, 3508), 'Letter': (2550, 3300), 'Legal': (2550, 4200),
-        '4x6': (1200, 1800), '5x7': (1500, 2100), 'Card': (651, 1074)
+        '4x6': (1200, 1800), '5x7': (1500, 2100), 'Card': (651, 1074),
+        'A5': (1748, 2480), 'B5': (2079, 2953)
     }
     canvas_w, canvas_h = dimensions.get(job.get('paper_size', 'A4'), (2480, 3508))
-    
     canvas = Image.new('RGB', (canvas_w, canvas_h), color=(255, 255, 255))
+    
     layout = job.get('layout', '1_photo')
     rows, cols = 1, 1
     
@@ -75,11 +97,21 @@ def build_print_sheet(job):
         m = re.search(r'(\d+)x(\d+)', layout)
         if m: rows, cols = int(m.group(1)), int(m.group(2))
 
-    margin = 80
+    # Pull user adjustments
+    fit_mode = job.get('fit_mode', 'contain')
+    zoom = float(job.get('zoom', 1.0))
+    rotation = int(job.get('rotation', 0))
+    grid_gap = int(job.get('grid_gap', 40))
+    
+    if job.get('border', 'Bordered') == 'Borderless':
+        margin, cell_gap = 0, 0
+    else:
+        margin, cell_gap = grid_gap, grid_gap
+
     usable_w = canvas_w - (margin * 2)
     usable_h = canvas_h - (margin * 2)
-    cell_w = usable_w // cols
-    cell_h = usable_h // rows
+    cell_w = (usable_w - (cols - 1) * cell_gap) // cols
+    cell_h = (usable_h - (rows - 1) * cell_gap) // rows
 
     images = []
     for fn in filenames:
@@ -91,6 +123,9 @@ def build_print_sheet(job):
                 img = img.convert('L').convert('RGB')
             else:
                 img = img.convert('RGB')
+            # Apply rotation before fitting
+            if rotation != 0:
+                img = img.rotate(-rotation, expand=True, fillcolor=(255, 255, 255))
             images.append(img)
         except Exception: pass
 
@@ -101,10 +136,12 @@ def build_print_sheet(job):
         for c in range(cols):
             src_img = images[img_idx % len(images)]
             img_idx += 1
-            cell_img = src_img.copy()
-            cell_img.thumbnail((cell_w - 20, cell_h - 20), Image.Resampling.LANCZOS)
-            x = margin + (c * cell_w) + (cell_w - cell_img.width) // 2
-            y = margin + (r * cell_h) + (cell_h - cell_img.height) // 2
+            
+            # Apply CSS exact fit and zoom
+            cell_img = process_cell_image(src_img, cell_w, cell_h, fit_mode, zoom)
+            
+            x = margin + c * (cell_w + cell_gap)
+            y = margin + r * (cell_h + cell_gap)
             canvas.paste(cell_img, (x, y))
 
     out_name = f"compiled_job_{job['id']}.jpg"
@@ -116,7 +153,7 @@ def secure_shred(job):
     for fn in job.get('filenames', []):
         try: os.remove(os.path.join(app.config['UPLOAD_FOLDER'], fn))
         except: pass
-    compiled_name = f"compiled_job_{job['id']}.jpg"
+    compiled_name = f"compiled_job_{job.get('id', 0)}.jpg"
     try: os.remove(os.path.join(app.config['STATIC_FOLDER'], compiled_name))
     except: pass
 
@@ -165,7 +202,6 @@ def test_print_blank():
         filename = f"test_blank_{int(datetime.now().timestamp())}.jpg"
         filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
         blank_im.save(filepath, format='JPEG', quality=85)
-        # Bypasses secure delete using job_id 0 and forces single-side behavior
         return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
@@ -216,6 +252,12 @@ def handle_upload():
         'print_side': request.form.get('print_side', 'single'),
         'layout': f"Custom ({custom_rows}x{custom_cols})" if layout == 'custom' else layout,
         'paper_size': request.form.get('paper_size', 'A4'),
+        'media_type': request.form.get('media_type', 'Plain Paper'),
+        'border': request.form.get('border', 'Bordered'),
+        'fit_mode': request.form.get('fit_mode', 'contain'),
+        'zoom': float(request.form.get('zoom', 1.0)),
+        'rotation': int(request.form.get('rotation', 0)),
+        'grid_gap': int(request.form.get('grid_gap', 40)),
         'total_price': float(request.form.get('total_price', 0.0)),
         'time': datetime.now().strftime('%d %b, %I:%M %p'),
         'payment_status': 'Pending Verification',
@@ -287,7 +329,7 @@ def print_ready(filename, filetype, job_id):
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
                 body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; }}
-                .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
+                .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
                 .btn-green {{ background: #16a34a; }}
                 .btn-red {{ background: #dc2626; }}
                 .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 20px auto; display: block; border-radius: 8px; }}
