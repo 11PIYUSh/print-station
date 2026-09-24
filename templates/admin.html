@@ -64,6 +64,11 @@
                             <label class="block text-zinc-400 mb-1 font-medium">UPI VPA</label>
                             <input type="text" id="upiIdInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
                         </div>
+                        <div class="border-t border-zinc-800 pt-3 mt-1">
+                            <label class="block text-purple-400 mb-1 font-bold">Public Portal URL (For QR Standee)</label>
+                            <input type="text" id="portalUrlInput" placeholder="http://192.168.1.21:5000" class="w-full bg-zinc-950 border border-purple-800/80 rounded-xl p-2.5 text-white outline-none focus:border-purple-500">
+                            <p class="text-[10px] text-zinc-500 mt-1">Update this if you launch online or change IPs. QR code will route here.</p>
+                        </div>
                     </div>
                 </div>
 
@@ -132,6 +137,7 @@
                 
                 document.getElementById('shopNameInput').value = data.shop_name || '';
                 document.getElementById('upiIdInput').value = data.upi_id || '';
+                document.getElementById('portalUrlInput').value = data.portal_url || window.location.origin;
                 if (data.logo_url) document.getElementById('adminLogo').src = data.logo_url;
 
                 if (data.rates) {
@@ -158,8 +164,10 @@
             } catch(e) {}
         }
 
+        // ================= FIX: FULL PAGE A4 QR STANDEE =================
         function generateQRStandee() {
-            const portalUrl = window.location.origin; // Gets the exact IP address customers need
+            // Now grabs the URL directly from the settings input!
+            const portalUrl = document.getElementById('portalUrlInput').value || window.location.origin; 
             const shopName = document.getElementById('shopNameInput').value || 'Piush Xerox';
             
             const standeeWindow = window.open('', '_blank');
@@ -167,43 +175,68 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Print Standee</title>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Print Standee - ${shopName}</title>
                     <style>
                         @page { size: A4 portrait; margin: 0; }
-                        body { font-family: sans-serif; text-align: center; margin: 0; padding: 0; background: #f8fafc; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-                        .standee-container { width: 90%; max-width: 700px; background: white; padding: 40px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 2px solid #e2e8f0; }
-                        .header { font-size: 48px; font-weight: bold; color: #1e3a8a; margin-bottom: 5px; }
-                        .subheader { font-size: 24px; color: #64748b; margin-bottom: 40px; }
-                        .qr-box { display: inline-block; padding: 20px; border: 4px solid #3b82f6; border-radius: 20px; background: #eff6ff; margin-bottom: 30px; }
-                        .steps { display: flex; justify-content: space-around; margin-top: 40px; text-align: center; font-weight: bold; font-size: 18px; color: #334155; }
-                        .step { flex: 1; }
-                        .step-icon { font-size: 40px; margin-bottom: 10px; }
-                        .url-text { margin-top: 30px; font-size: 20px; font-weight: bold; color: #3b82f6; letter-spacing: 1px; }
+                        * { box-sizing: border-box; }
+                        body { 
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                            margin: 0; padding: 0; background: white; 
+                            -webkit-print-color-adjust: exact; print-color-adjust: exact; 
+                        }
+                        .poster { 
+                            width: 210mm; height: 297mm; margin: 0 auto; 
+                            display: flex; flex-direction: column; justify-content: space-evenly; align-items: center; 
+                            background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%); 
+                            padding: 15mm; border: 2mm solid #3b82f6; overflow: hidden; 
+                        }
+                        .header { text-align: center; }
+                        .title { font-size: 15mm; font-weight: 900; color: #1e3a8a; margin: 0; line-height: 1.2; letter-spacing: -1px; }
+                        .subtitle { font-size: 7mm; color: #475569; margin: 3mm 0 0 0; font-weight: 600; }
+                        .qr-container { 
+                            background: white; padding: 8mm; border-radius: 8mm; 
+                            box-shadow: 0 10mm 25mm rgba(0,0,0,0.15); border: 2mm solid #2563eb; 
+                        }
+                        .url-badge { 
+                            background: #dbeafe; color: #1d4ed8; padding: 3mm 10mm; 
+                            border-radius: 20mm; font-size: 7mm; font-weight: bold; 
+                            border: 1mm solid #bfdbfe; margin-top: 8mm; 
+                        }
+                        .steps-row { 
+                            display: flex; justify-content: space-between; 
+                            width: 100%; padding: 0 10mm; margin-top: 5mm; 
+                        }
+                        .step-item { display: flex; flex-direction: column; align-items: center; text-align: center; width: 30%; }
+                        .step-icon { font-size: 15mm; margin-bottom: 4mm; }
+                        .step-text { font-size: 5.5mm; font-weight: 700; color: #334155; line-height: 1.3; }
                     </style>
                 </head>
                 <body>
-                    <div class="standee-container">
-                        <div class="header">📱 Print From Mobile</div>
-                        <div class="subheader">Scan QR to upload & print at <b>${shopName}</b></div>
-                        
-                        <div class="qr-box">
-                            <div id="standeeQR"></div>
+                    <div class="poster">
+                        <div class="header">
+                            <h1 class="title">📱 Print From Mobile</h1>
+                            <p class="subtitle">Scan QR to upload & print at <br><b style="color:#0f172a; font-size: 9mm;">${shopName}</b></p>
                         </div>
 
-                        <div class="url-text">${portalUrl}</div>
+                        <div style="display: flex; flex-direction: column; align-items: center;">
+                            <div class="qr-container" id="standeeQR"></div>
+                            <div class="url-badge">${portalUrl}</div>
+                        </div>
 
-                        <div class="steps">
-                            <div class="step">
+                        <div class="steps-row">
+                            <div class="step-item">
                                 <div class="step-icon">📸</div>
-                                Scan QR Code
+                                <div class="step-text">Scan QR Code</div>
                             </div>
-                            <div class="step">
+                            <div class="step-item">
                                 <div class="step-icon">📄</div>
-                                Upload Document
+                                <div class="step-text">Upload Document</div>
                             </div>
-                            <div class="step">
+                            <div class="step-item">
                                 <div class="step-icon">💳</div>
-                                Pay via UPI
+                                <div class="step-text">Pay via UPI</div>
                             </div>
                         </div>
                     </div>
@@ -213,19 +246,21 @@
                         window.onload = function() {
                             new QRCode(document.getElementById("standeeQR"), {
                                 text: "${portalUrl}",
-                                width: 350,
-                                height: 350,
+                                width: 400,
+                                height: 400,
                                 colorDark: "#1e3a8a",
-                                colorLight: "#ffffff"
+                                colorLight: "#ffffff",
+                                correctLevel : QRCode.CorrectLevel.H
                             });
                             
-                            // Auto trigger print dialog after QR renders
+                            // Auto trigger print dialog after QR fully renders
                             setTimeout(() => { window.print(); }, 1000);
                         }
                     <\/script>
                 </body>
                 </html>
             `);
+            standeeWindow.document.close();
         }
 
         async function runDiagnostic(type) {
@@ -259,6 +294,7 @@
             const payload = {
                 shop_name: document.getElementById('shopNameInput').value,
                 upi_id: document.getElementById('upiIdInput').value,
+                portal_url: document.getElementById('portalUrlInput').value,
                 rates: {
                     bw_single: parseFloat(document.getElementById('bwSingleInput').value) || 2,
                     color_single: parseFloat(document.getElementById('colorSingleInput').value) || 5,

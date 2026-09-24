@@ -19,6 +19,7 @@ DEFAULT_CONFIG = {
     'upi_id': 'piyush@upi',
     'payee_name': 'PIYUSH',
     'printer_ip': '192.168.1.15',
+    'portal_url': '',
     'logo_url': '/static/logo.png',
     'rates': {'bw_single': 2.0, 'bw_double': 5.0, 'color_single': 5.0, 'color_double': 0.50},
     'paper_rates': {'A4': 0.0, 'Letter': 0.0, 'Legal': 1.0, 'A5': 0.0, 'B5': 0.0, '4x6': 10.0, '5x7': 15.0, 'Card': 5.0},
@@ -67,7 +68,6 @@ def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
     return img
 
 def build_print_sheet(job):
-    # If it is a Document job, bypass image rendering entirely
     if job.get('job_mode') == 'document':
         return 'multiple_docs', 'document'
 
@@ -172,8 +172,8 @@ def get_config(): return jsonify(SETTINGS)
 @app.route('/api/admin/config/update', methods=['POST'])
 def update_admin_config():
     data = request.json or {}
-    for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip']:
-        if key in data and str(data[key]).strip(): SETTINGS[key] = str(data[key]).strip()
+    for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip', 'portal_url']:
+        if key in data: SETTINGS[key] = str(data[key]).strip()
     
     if 'rates' in data: SETTINGS['rates'].update({k: float(v) for k, v in data['rates'].items()})
     if 'paper_rates' in data: SETTINGS['paper_rates'].update({k: float(v) for k, v in data['paper_rates'].items()})
@@ -293,7 +293,6 @@ def print_ready(filename, filetype, job_id):
     if filetype == 'document':
         filenames = target.get('filenames', [])
         
-        # If single PDF
         if len(filenames) == 1:
             fn = filenames[0]
             return f"""
@@ -305,7 +304,6 @@ def print_ready(filename, filetype, job_id):
             </script>
             """
         
-        # If multiple PDFs
         links = ""
         for i, fn in enumerate(filenames):
             alert_script = ""
