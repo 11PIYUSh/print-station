@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import socket
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
@@ -19,6 +20,7 @@ DEFAULT_CONFIG = {
     'upi_id': 'piyush@upi',
     'payee_name': 'PIYUSH',
     'printer_ip': '192.168.1.15',
+    'printer_port': 631,
     'portal_url': '',
     'logo_url': '/static/logo.png',
     'rates': {'bw_single': 2.0, 'bw_double': 5.0, 'color_single': 5.0, 'color_double': 0.50},
@@ -49,7 +51,18 @@ SETTINGS = load_settings()
 PRINT_JOBS = []
 job_counter = 1
 
-# ================= RENDER ENGINE =================
+def check_printer_socket(ip, port=631, timeout=1.5):
+    """Pings the printer IP to check if it is online."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(timeout)
+        res = sock.connect_ex((ip, int(port)))
+        sock.close()
+        return res == 0
+    except Exception:
+        return False
+
+# ================= PERFECT GRID RENDER ENGINE =================
 def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
     if fit_mode == 'cover':
         img = ImageOps.fit(img, (cell_w, cell_h), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
@@ -97,17 +110,20 @@ def build_print_sheet(job):
     fit_mode = job.get('fit_mode', 'contain')
     zoom = float(job.get('zoom', 1.0))
     rotation = int(job.get('rotation', 0))
-    grid_gap = int(job.get('grid_gap', 40))
     
+    # Scale grid gap accurately to match the frontend preview
+    raw_gap = int(job.get('grid_gap', 40))
     if job.get('border', 'Bordered') == 'Borderless':
-        margin, cell_gap = 0, 0
+        scaled_gap = 0
     else:
-        margin, cell_gap = grid_gap, grid_gap
+        # 260px is the approx width of the frontend preview canvas
+        scaled_gap = int((raw_gap / 10.0) * (canvas_w / 260.0))
 
+    margin = scaled_gap
     usable_w = canvas_w - (margin * 2)
     usable_h = canvas_h - (margin * 2)
-    cell_w = (usable_w - (cols - 1) * cell_gap) // cols
-    cell_h = (usable_h - (rows - 1) * cell_gap) // rows
+    cell_w = (usable_w - (cols - 1) * scaled_gap) // cols
+    cell_h = (usable_h - (rows - 1) * scaled_gap) // rows
 
     images = []
     for fn in filenames:
@@ -139,8 +155,8 @@ def build_print_sheet(job):
                 
             img_idx += 1
             cell_img = process_cell_image(src_img, cell_w, cell_h, fit_mode, zoom)
-            x = margin + c * (cell_w + cell_gap)
-            y = margin + r * (cell_h + cell_gap)
+            x = margin + c * (cell_w + scaled_gap)
+            y = margin + r * (cell_h + scaled_gap)
             canvas.paste(cell_img, (x, y))
 
     out_name = f"compiled_job_{job['id']}.jpg"
@@ -169,12 +185,20 @@ def serve_upload(filename): return send_from_directory(app.config['UPLOAD_FOLDER
 @app.route('/api/config', methods=['GET'])
 def get_config(): return jsonify(SETTINGS)
 
+@app.route('/api/printer/status', methods=['GET'])
+def printer_status():
+    ip = SETTINGS.get('printer_ip', '192.168.1.15')
+    port = SETTINGS.get('printer_port', 631)
+    online = check_printer_socket(ip, port)
+    return jsonify({'ip': ip, 'port': port, 'status': 'Online' if online else 'Offline'})
+
 @app.route('/api/admin/config/update', methods=['POST'])
 def update_admin_config():
     data = request.json or {}
     for key in ['shop_name', 'tagline', 'upi_id', 'payee_name', 'printer_ip', 'portal_url']:
         if key in data: SETTINGS[key] = str(data[key]).strip()
     
+    if 'printer_port' in data: SETTINGS['printer_port'] = int(data['printer_port'])
     if 'rates' in data: SETTINGS['rates'].update({k: float(v) for k, v in data['rates'].items()})
     if 'paper_rates' in data: SETTINGS['paper_rates'].update({k: float(v) for k, v in data['paper_rates'].items()})
     if 'layout_rates' in data: SETTINGS['layout_rates'].update({k: float(v) for k, v in data['layout_rates'].items()})
@@ -250,16 +274,41 @@ def verify_and_print(job_id):
     if not target: return jsonify({'error': 'Job not found'}), 404
 
     target['payment_status'] = 'Paid'
-
     try:
         filename, ftype = build_print_sheet(target)
         if not filename: return jsonify({'success': False, 'error': 'Failed to process files.'}), 200
-            
         target['print_status'] = 'Completed'
-        return jsonify({
-            'success': True, 
-            'url': f"/print_ready/{filename}/{ftype}/{target['id']}",
-        })
+        return jsonify({'success': True, 'url': f"/print_ready/{filename}/{ftype}/{target['id']}"})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 200
+
+@app.route('/api/admin/test/blank', methods=['POST'])
+def test_print_blank():
+    try:
+        blank_im = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
+        filename = f"test_blank_{int(datetime.now().timestamp())}.jpg"
+        filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
+        blank_im.save(filepath, format='JPEG', quality=85)
+        return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 200
+
+@app.route('/api/admin/test/image', methods=['POST'])
+def test_print_image():
+    try:
+        test_im = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
+        draw = ImageDraw.Draw(test_im)
+        draw.rectangle([100, 100, 2380, 3408], outline=(0, 0, 0), width=6)
+        colors = [(0, 255, 255), (255, 0, 255), (255, 255, 0), (0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
+        start_y = 600
+        for col in colors:
+            draw.rectangle([300, start_y, 2180, start_y + 150], fill=col, outline=(0, 0, 0), width=2)
+            start_y += 220
+
+        filename = f"test_color_{int(datetime.now().timestamp())}.jpg"
+        filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
+        test_im.save(filepath, format='JPEG', quality=90)
+        return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 200
 
@@ -271,28 +320,15 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= THE PRINT BRIDGE =================
+# ================= NATIVE ANDROID PRINT BRIDGE (1-PAGE FIX) =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
     print_side = target.get('print_side', 'single')
-    paper_size = target.get('paper_size', 'A4')
-    media_type = target.get('media_type', 'Plain Paper')
 
-    css_sizes = {
-        'A4': 'A4', 'Letter': 'letter', 'Legal': 'legal',
-        '4x6': '4in 6in', '5x7': '5in 7in', 'A5': 'A5', 'B5': 'B5', 'Card': '2.12in 3.37in'
-    }
-    css_page_size = css_sizes.get(paper_size, 'A4')
-
-    media_warning = ""
-    if media_type != 'Plain Paper':
-        media_warning = f"alert('⚠️ ATTENTION:\\n\\nYou MUST manually select \\'{media_type}\\' in the Android print drop-down.\\n\\nAndroid blocks websites from auto-selecting photo paper.');"
-
-    # ======== IF IT IS A DOCUMENT MODE JOB ========
+    # ======== DOCUMENT MODE ========
     if filetype == 'document':
         filenames = target.get('filenames', [])
-        
         if len(filenames) == 1:
             fn = filenames[0]
             return f"""
@@ -333,99 +369,73 @@ def print_ready(filename, filetype, job_id):
         </html>
         """
 
-    # ======== IF IT IS A DOUBLE-SIDED IMAGE GRID ========
+    # ======== IMAGE GRID (1-Page Forced Fix) ========
+    # The CSS here is entirely designed to prevent Android from spilling to a second page.
+    # It dynamically stretches to fit whatever paper size the user selects inside Android.
+    
+    duplex_html = ""
     if print_side == 'double':
-        return f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Duplex Print - Order #{job_id}</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; margin: 0; }}
-                .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }}
-                .btn-green {{ background: #16a34a; }}
-                .btn-red {{ background: #dc2626; }}
-                .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 20px auto; display: block; border-radius: 8px; }}
-                
-                @media print {{
-                    body * {{ visibility: hidden; display: none; }}
-                    @page {{ margin: 0; size: {css_page_size}; }}
-                    html, body {{ margin: 0 !important; padding: 0 !important; height: 100%; overflow: hidden; display: block; }}
-                    .img-preview {{ 
-                        visibility: visible; display: block; position: absolute; left: 0; top: 0; 
-                        width: 100%; height: 100%; max-width: 100%; max-height: 100%;
-                        object-fit: contain; margin: 0; border: none; border-radius: 0;
-                    }}
-                }}
-            </style>
-        </head>
-        <body>
-            <h2 style="margin-bottom: 5px;">Manual Duplex Mode</h2>
-            <p style="color: #a1a1aa; font-size: 12px; margin-top: 0;">Size: {paper_size} | Media: {media_type}</p>
-            <img src="/static/{filename}" class="img-preview">
-            
-            <div id="step1">
+        duplex_html = f"""
+            <div id="step1" class="no-print">
                 <p style="color:#60a5fa; font-size: 18px; margin-top: 0;">Step 1: Print the Front Side</p>
-                <button class="btn" onclick="{media_warning} window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
+                <button class="btn" onclick="window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
             </div>
-            
-            <div id="step2" style="display:none;">
+            <div id="step2" class="no-print" style="display:none;">
                 <p style="color:#fbbf24; font-size: 22px; font-weight: bold; margin-bottom: 5px;">⚠️ TURN THE PAGE NOW!</p>
-                <p style="margin-top: 0; font-size: 16px; color: #a1a1aa;">Take the printed sheet out, flip it over, and re-insert it into the printer.</p>
+                <p style="margin-top: 0; font-size: 16px; color: #a1a1aa;">Take the printed sheet out, flip it over, and re-insert it.</p>
                 <button class="btn btn-green" onclick="window.print(); document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='block';">🖨️ Print Back Side</button>
             </div>
-
-            <div id="step3" style="display:none;">
+            <div id="step3" class="no-print" style="display:none;">
                 <p style="color:#4ade80; font-size: 18px; font-weight: bold;">✅ Printing Complete</p>
                 <button class="btn btn-red" onclick="shredAndClose()">🗑️ Shred Data & Close Tab</button>
             </div>
-
-            <script>
-                async function shredAndClose() {{
-                    if({job_id} !== 0) {{
-                        try {{ await fetch(`/api/jobs/secure_delete/{job_id}`, {{method: 'POST'}}); }} catch(e) {{}}
-                    }}
-                    window.close();
-                }}
-            </script>
-        </body>
-        </html>
         """
         
-    # ======== IF IT IS A SINGLE-SIDED IMAGE GRID ========
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Secure Print - Order #{job_id}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-            @page {{ margin: 0; size: {css_page_size}; }}
-            html, body {{ 
-                margin: 0 !important; padding: 0 !important; 
-                width: 100%; height: 100%; 
-                overflow: hidden; background: #fff; display: block; 
-            }}
-            img {{ 
-                width: 100%; height: 100%; 
-                max-width: 100%; max-height: 100%; 
-                object-fit: contain; display: block; 
-                margin: 0; padding: 0; page-break-inside: avoid; 
+            body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; margin: 0; }}
+            .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
+            .btn-green {{ background: #16a34a; }}
+            .btn-red {{ background: #dc2626; }}
+            .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 20px auto; display: block; border-radius: 8px; }}
+            
+            /* THIS PREVENTS THE SECOND BLANK PAGE IN ANDROID */
+            @media print {{
+                @page {{ margin: 0; size: auto; }}
+                * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+                html, body {{ width: 100vw; height: 99vh; overflow: hidden; background: #fff; display: block; }}
+                .no-print {{ display: none !important; }}
+                .img-preview {{ 
+                    visibility: visible; display: block; position: absolute; left: 0; top: 0; 
+                    width: 100vw; height: 99vh; max-width: 100vw; max-height: 99vh;
+                    object-fit: contain; margin: 0; border: none; border-radius: 0; page-break-inside: avoid;
+                }}
             }}
         </style>
     </head>
     <body>
-        <img src="/static/{filename}">
+        <h2 class="no-print" style="margin-bottom: 5px;">Print Mode</h2>
+        <img src="/static/{filename}" class="img-preview">
+        
+        {duplex_html}
+        
         <script>
-            window.onload = () => {{
-                setTimeout(() => {{ 
-                    {media_warning}
-                    window.print(); 
-                }}, 500);
-            }};
-            window.addEventListener('afterprint', () => {{
-                if({job_id} !== 0) fetch(`/api/jobs/secure_delete/{job_id}`, {{method: 'POST'}});
-            }});
+            async function shredAndClose() {{
+                if({job_id} !== 0) {{ try {{ await fetch(`/api/jobs/secure_delete/{job_id}`, {{method: 'POST'}}); }} catch(e) {{}} }}
+                window.close();
+            }}
+
+            if ("{print_side}" !== "double") {{
+                window.onload = () => {{
+                    setTimeout(() => {{ window.print(); }}, 500);
+                }};
+                window.addEventListener('afterprint', () => {{ shredAndClose(); }});
+            }}
         </script>
     </body>
     </html>
