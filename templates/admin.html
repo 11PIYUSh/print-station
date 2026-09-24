@@ -22,10 +22,9 @@
                 </div>
             </div>
             <div class="flex flex-col items-end gap-2">
-                <!-- NEW: Connect and Refresh Buttons -->
                 <div class="flex items-center gap-2">
-                    <button onclick="pollPrinter()" class="text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-zinc-300 transition">🔄 Refresh</button>
-                    <button onclick="connectPrinter()" class="text-[10px] font-bold bg-blue-600/20 text-blue-400 border border-blue-600/50 hover:bg-blue-600/40 px-3 py-1.5 rounded-lg transition shadow-sm">🔌 Connect Printer</button>
+                    <button onclick="pollPrinter(true)" class="text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg text-zinc-300 transition">🔄 Refresh Status</button>
+                    <a href="/logout" class="text-[10px] font-bold bg-rose-600/20 text-rose-400 border border-rose-600/50 hover:bg-rose-600/40 px-3 py-1.5 rounded-lg transition shadow-sm">🔒 Logout</a>
                     <div class="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-800 rounded-lg text-[10px] shadow-sm">
                         <span id="printerStatusDot" class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
                         <span id="printerStatusLabel" class="text-zinc-400 font-bold tracking-wide">Checking...</span>
@@ -45,24 +44,27 @@
                     <span>📱</span> Print Counter QR Standee
                 </button>
                 <button type="button" onclick="runDiagnostic('blank')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 transition flex items-center justify-center gap-2 shadow-sm">
-                    <span>📄</span> Blank Test
+                    <span>📄</span> Blank Test (A4 PDF)
                 </button>
                 <button type="button" onclick="runDiagnostic('image')" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl border border-blue-600/80 bg-blue-600/20 hover:bg-blue-600/30 text-xs font-bold text-blue-400 transition flex items-center justify-center gap-2 shadow-sm">
-                    <span>🎨</span> Color Test
+                    <span>🎨</span> Color Test (A4 PDF)
                 </button>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            
             <section class="lg:col-span-5 space-y-5">
                 
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
-                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Store Profile</h2>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400">Store Profile & Security</h2>
                     <div class="space-y-3 text-xs">
                         <div>
                             <label class="block text-zinc-400 mb-1 font-medium">Store Name</label>
                             <input type="text" id="shopNameInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-zinc-400 mb-1 font-medium">Admin Panel Password</label>
+                            <input type="text" id="adminPasswordInput" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-white outline-none focus:border-rose-500">
                         </div>
                         <div>
                             <label class="block text-zinc-400 mb-1 font-medium">Upload Store Logo</label>
@@ -96,6 +98,7 @@
                     </div>
                 </div>
 
+                <!-- ... ALL RATE INPUTS REMAIN THE SAME ... -->
                 <div class="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 shadow-xl space-y-3">
                     <h2 class="text-xs font-bold uppercase tracking-wider text-purple-400">Layout Grid Surcharges (+₹)</h2>
                     <div class="grid grid-cols-2 gap-3 text-xs">
@@ -149,10 +152,6 @@
         </div>
     </div>
 
-    <footer class="py-5 border-t border-zinc-900 bg-[#000000] text-center">
-        <p class="text-xs font-semibold text-zinc-400 tracking-wide">Created & Designed by <span class="text-blue-500 font-extrabold uppercase">PIYUSH</span></p>
-    </footer>
-
     <script>
         async function fetchSettings() {
             try {
@@ -164,6 +163,7 @@
                 document.getElementById('printerIpInput').value = data.printer_ip || '';
                 if(data.printer_port) document.getElementById('printerPortSelect').value = data.printer_port;
                 document.getElementById('portalUrlInput').value = data.portal_url || window.location.origin;
+                document.getElementById('adminPasswordInput').value = data.admin_password || 'admin';
                 if (data.logo_url) document.getElementById('adminLogo').src = data.logo_url;
 
                 if (data.rates) {
@@ -190,29 +190,26 @@
             } catch(e) {}
         }
 
-        async function pollPrinter() {
+        // SILENT POLLER - Prevents annoying connection popups
+        async function pollPrinter(showSuccessAlert = false) {
+            document.getElementById('printerStatusLabel').textContent = 'Checking...';
+            document.getElementById('printerStatusDot').className = 'h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse';
             try {
                 const res = await fetch('/api/printer/status');
                 const data = await res.json();
                 const isOnline = data.status === 'Online';
                 document.getElementById('printerStatusDot').className = `h-1.5 w-1.5 rounded-full ${isOnline ? 'bg-emerald-400' : 'bg-rose-500'}`;
                 document.getElementById('printerStatusLabel').textContent = `${data.ip} (${isOnline ? 'Online' : 'Offline'})`;
+                
+                if (showSuccessAlert && isOnline) alert('✅ Printer Online & Connected!');
+                else if (showSuccessAlert && !isOnline) alert('❌ Printer Offline. Check Wi-Fi / IP.');
+                
                 return isOnline;
             } catch {
                 document.getElementById('printerStatusDot').className = 'h-1.5 w-1.5 rounded-full bg-rose-500';
-                document.getElementById('printerStatusLabel').textContent = 'Server Disconnected';
+                document.getElementById('printerStatusLabel').textContent = 'Disconnected';
+                if (showSuccessAlert) alert('❌ Server disconnected. Cannot check printer.');
                 return false;
-            }
-        }
-
-        async function connectPrinter() {
-            document.getElementById('printerStatusLabel').textContent = 'Connecting...';
-            document.getElementById('printerStatusDot').className = 'h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse';
-            const isOnline = await pollPrinter();
-            if (isOnline) {
-                alert('✅ Printer Connected Successfully!');
-            } else {
-                alert('❌ Failed to connect. Check IP Address and ensure printer is turned on.');
             }
         }
 
@@ -280,13 +277,13 @@
                 const text = await res.text();
                 let data;
                 try { data = JSON.parse(text); } catch (e) {
-                    alert(`❌ Server crashed. Returned unexpected HTML data.`);
+                    alert(`❌ Server crashed.`);
                     return;
                 }
                 if (res.ok && data.success) {
                     window.open(data.url, '_blank');
                 } else {
-                    alert("❌ Backend Error: " + (data.error || "Unknown issue generating test image."));
+                    alert("❌ Backend Error generating PDF.");
                 }
             } catch(e) {
                 alert("❌ Network Error: Cannot reach server.");
@@ -313,6 +310,7 @@
                 printer_ip: document.getElementById('printerIpInput').value,
                 printer_port: document.getElementById('printerPortSelect').value,
                 portal_url: document.getElementById('portalUrlInput').value,
+                admin_password: document.getElementById('adminPasswordInput').value,
                 rates: {
                     bw_single: parseFloat(document.getElementById('bwSingleInput').value) || 2,
                     color_single: parseFloat(document.getElementById('colorSingleInput').value) || 5,
@@ -337,11 +335,12 @@
             };
             const res = await fetch('/api/admin/config/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (res.ok) alert('Settings saved successfully!');
-            pollPrinter();
+            pollPrinter(false);
         });
 
         async function loadJobs() {
             const res = await fetch('/api/jobs');
+            if (res.status === 401) return; // Ignore if session expired
             const jobs = await res.json();
             const container = document.getElementById('jobsContainer');
 
@@ -396,7 +395,7 @@
             const text = await res.text();
             let data;
             try { data = JSON.parse(text); } catch (e) {
-                alert(`❌ Server crashed. Returned unexpected HTML data.`);
+                alert(`❌ Server crashed.`);
                 btn.innerHTML = originalHtml;
                 return;
             }
@@ -418,10 +417,10 @@
         }
 
         fetchSettings();
-        pollPrinter();
+        pollPrinter(false);
         loadJobs();
         setInterval(loadJobs, 3500);
-        setInterval(pollPrinter, 15000);
+        setInterval(() => pollPrinter(false), 20000);
     </script>
 </body>
 </html>
