@@ -316,7 +316,7 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= NATIVE ANDROID PRINT BRIDGE (CRASH & PAPER SIZE FIX) =================
+# ================= NATIVE ANDROID PRINT BRIDGE =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
@@ -402,13 +402,13 @@ def print_ready(filename, filetype, job_id):
             .banner {{ background: #3f3f46; border: 2px solid #fbbf24; color: #fbbf24; padding: 15px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; font-size: 18px; line-height: 1.5; }}
             .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 0 auto; display: block; }}
             
+            /* EXTREMELY STRICT CSS TO PREVENT 'PREPARING PREVIEW' FREEZE */
             @media print {{
-                /* REMOVED CSS OVERRIDE TO PREVENT CANON DRIVER CRASH */
                 @page {{ margin: 0; }}
-                html, body {{ margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; display: block; overflow: hidden; }}
+                html, body {{ margin: 0; padding: 0; height: 100%; width: 100%; background: #fff; }}
                 .no-print {{ display: none !important; }}
                 .img-preview {{ 
-                    width: 100vw; height: 99vh; display: block; margin: 0; padding: 0; border: none; object-fit: contain; max-width: none; max-height: none; page-break-inside: avoid;
+                    width: 100%; height: 100%; display: block; margin: 0; padding: 0; border: none; object-fit: contain; page-break-inside: avoid;
                 }}
             }}
         </style>
@@ -431,16 +431,16 @@ def print_ready(filename, filetype, job_id):
                 window.close();
             }}
 
-            function imageLoaded() {{
-                if ("{print_side}" !== "double") {{
-                    setTimeout(() => {{ 
-                        window.print(); 
-                    }}, 400);
-                }}
-            }}
-
             if ("{print_side}" !== "double") {{
-                document.getElementById('targetImg').onload = imageLoaded;
+                // Safely waits for image decoding in RAM before opening print dialog
+                const img = document.getElementById('targetImg');
+                img.decode().then(() => {{
+                    setTimeout(() => {{ window.print(); }}, 300);
+                }}).catch(() => {{
+                    // Fallback if decode() is unsupported
+                    setTimeout(() => {{ window.print(); }}, 800);
+                }});
+
                 window.addEventListener('afterprint', () => {{ shredAndClose(); }});
             }}
         </script>
