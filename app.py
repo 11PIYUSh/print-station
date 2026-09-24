@@ -285,7 +285,6 @@ def test_print_blank():
         filename = f"test_blank_{int(datetime.now().timestamp())}.jpg"
         filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
         blank_im.save(filepath, format='JPEG', quality=85)
-        # 0 is the job ID for tests, which defaults to A4 paper
         return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 200
@@ -305,7 +304,6 @@ def test_print_image():
         filename = f"test_color_{int(datetime.now().timestamp())}.jpg"
         filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
         test_im.save(filepath, format='JPEG', quality=90)
-        # 0 is the job ID for tests, which defaults to A4 paper
         return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 200
@@ -318,35 +316,19 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= NATIVE ANDROID PRINT BRIDGE (FINAL SIZE FIX) =================
+# ================= NATIVE ANDROID PRINT BRIDGE =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
     
     print_side = target.get('print_side', 'single')
-    # job_id 0 defaults to an empty target {}, forcing paper_size to explicitly fall back to 'A4'
     paper_size = target.get('paper_size', 'A4')
     media_type = target.get('media_type', 'Plain Paper')
     copies = target.get('copies', 1)
     color_mode = target.get('color_mode', 'color')
 
-    # Convert frontend portal labels to valid CSS dimensions for Android
-    css_sizes = {
-        'A4': 'A4', 
-        'Letter': 'letter', 
-        'Legal': 'legal',
-        '4x6': '4in 6in', 
-        '5x7': '5in 7in', 
-        'A5': 'A5', 
-        'B5': 'B5', 
-        'Card': '2.12in 3.37in'
-    }
-    
-    # This securely locks the paper size so Android cannot default to Index Card
-    css_page_size = css_sizes.get(paper_size, 'A4')
     css_filter = "filter: grayscale(100%) contrast(115%);" if color_mode == 'bw' else ""
 
-    # Alerts to guide the shop owner through manual Android Dialog settings
     media_warning = ""
     if media_type != 'Plain Paper':
         media_warning = f"alert('⚠️ ATTENTION:\\n\\nYou must manually select \\'{media_type}\\' in the Android print drop-down.');"
@@ -432,8 +414,8 @@ def print_ready(filename, filetype, job_id):
             .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 0 auto; display: block; }}
             
             @media print {{
-                /* STRICT OVERRIDE: Forces Android to use customer selection (or A4 for tests) */
-                @page {{ margin: 0; size: {css_page_size}; }}
+                /* COMPLETELY REMOVED @page SIZE OVERRIDE TO PREVENT CRASH ON ALL PHONES */
+                @page {{ margin: 0; }}
                 html, body {{ margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; display: block; overflow: hidden; }}
                 .no-print {{ display: none !important; }}
                 .img-preview {{ 
@@ -456,7 +438,6 @@ def print_ready(filename, filetype, job_id):
             }}
 
             if ("{print_side}" !== "double") {{
-                // Safely waits for image decoding in RAM before opening print dialog
                 const img = document.getElementById('targetImg');
                 img.decode().then(() => {{
                     setTimeout(() => {{ 
