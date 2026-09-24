@@ -67,11 +67,12 @@ def process_cell_image(img, cell_w, cell_h, fit_mode, zoom):
     return img
 
 def build_print_sheet(job):
+    # If it is a Document job, bypass image rendering entirely
+    if job.get('job_mode') == 'document':
+        return 'multiple_docs', 'document'
+
     filenames = job.get('filenames', [])
     if not filenames: return None, None
-
-    if job['primary_file'].lower().endswith('.pdf'):
-        return job['primary_file'], 'pdf'
 
     dimensions = {
         'A4': (2480, 3508), 'Letter': (2550, 3300), 'Legal': (2550, 4200),
@@ -192,37 +193,6 @@ def upload_logo():
     save_settings(SETTINGS)
     return jsonify({'success': True, 'logo_url': SETTINGS['logo_url']})
 
-# ================= HARDWARE TEST ROUTES =================
-@app.route('/api/admin/test/blank', methods=['POST'])
-def test_print_blank():
-    try:
-        blank_im = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
-        filename = f"test_blank_{int(datetime.now().timestamp())}.jpg"
-        filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
-        blank_im.save(filepath, format='JPEG', quality=85)
-        return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
-@app.route('/api/admin/test/image', methods=['POST'])
-def test_print_image():
-    try:
-        test_im = Image.new('RGB', (2480, 3508), color=(255, 255, 255))
-        draw = ImageDraw.Draw(test_im)
-        draw.rectangle([100, 100, 2380, 3408], outline=(0, 0, 0), width=6)
-        colors = [(0, 255, 255), (255, 0, 255), (255, 255, 0), (0, 0, 0), (255, 0, 0), (0, 255, 0), (0, 0, 255)]
-        start_y = 600
-        for col in colors:
-            draw.rectangle([300, start_y, 2180, start_y + 150], fill=col, outline=(0, 0, 0), width=2)
-            start_y += 220
-
-        filename = f"test_color_{int(datetime.now().timestamp())}.jpg"
-        filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
-        test_im.save(filepath, format='JPEG', quality=90)
-        return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
-
 @app.route('/upload', methods=['POST'])
 def handle_upload():
     global job_counter
@@ -245,6 +215,7 @@ def handle_upload():
         'id': job_counter,
         'filenames': saved_filenames,
         'primary_file': saved_filenames[0],
+        'job_mode': request.form.get('job_mode', 'image'),
         'copies': int(request.form.get('copies', 1)),
         'color_mode': request.form.get('color_mode', 'bw'),
         'print_side': request.form.get('print_side', 'single'),
@@ -300,22 +271,71 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= THE WORKING PRINT BRIDGE TAB =================
+# ================= THE PRINT BRIDGE =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
     print_side = target.get('print_side', 'single')
+    paper_size = target.get('paper_size', 'A4')
+    media_type = target.get('media_type', 'Plain Paper')
 
-    if filetype == 'pdf':
+    css_sizes = {
+        'A4': 'A4', 'Letter': 'letter', 'Legal': 'legal',
+        '4x6': '4in 6in', '5x7': '5in 7in', 'A5': 'A5', 'B5': 'B5', 'Card': '2.12in 3.37in'
+    }
+    css_page_size = css_sizes.get(paper_size, 'A4')
+
+    media_warning = ""
+    if media_type != 'Plain Paper':
+        media_warning = f"alert('⚠️ ATTENTION:\\n\\nYou MUST manually select \\'{media_type}\\' in the Android print drop-down.\\n\\nAndroid blocks websites from auto-selecting photo paper.');"
+
+    # ======== IF IT IS A DOCUMENT MODE JOB ========
+    if filetype == 'document':
+        filenames = target.get('filenames', [])
+        
+        # If single PDF
+        if len(filenames) == 1:
+            fn = filenames[0]
+            return f"""
+            <script>
+                if ("{print_side}" === "double") {{
+                    alert(`MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages' in the dialog.\\n2. Turn the pages and place them back in the tray.\\n3. Choose 'Print Even Pages'.`);
+                }}
+                window.location.href="/uploads/{fn}";
+            </script>
+            """
+        
+        # If multiple PDFs
+        links = ""
+        for i, fn in enumerate(filenames):
+            alert_script = ""
+            if print_side == 'double':
+                alert_script = "alert(`MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages' in the dialog.\\n2. Turn the pages and place them back in the tray.\\n3. Choose 'Print Even Pages'.`);"
+            links += f'<button class="btn" onclick="{alert_script} window.open(\'/uploads/{fn}\', \'_blank\')">📄 Open & Print File {i+1}</button><br>'
+            
         return f"""
-        <script>
-            if ("{print_side}" === "double") {{
-                alert("MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages' in the dialog.\\n2. Turn the pages and place them back in the tray.\\n3. Choose 'Print Even Pages'.");
-            }}
-            window.location.href="/uploads/{filename}";
-        </script>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Multiple Documents - Order #{job_id}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; }}
+                .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 16px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
+                .btn-red {{ background: #dc2626; margin-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <h2 style="color: #60a5fa;">Multiple Documents Detected</h2>
+            <p style="color: #a1a1aa; margin-bottom: 30px;">Please click and print each file below.</p>
+            {links}
+            <hr style="border-color:#333; margin: 30px 0;">
+            <button class="btn btn-red" onclick="fetch('/api/jobs/secure_delete/{job_id}', {{method: 'POST'}}); window.close();">🗑️ Shred Data & Close Hub</button>
+        </body>
+        </html>
         """
 
+    # ======== IF IT IS A DOUBLE-SIDED IMAGE GRID ========
     if print_side == 'double':
         return f"""
         <!DOCTYPE html>
@@ -332,7 +352,7 @@ def print_ready(filename, filetype, job_id):
                 
                 @media print {{
                     body * {{ visibility: hidden; display: none; }}
-                    @page {{ margin: 0; }}
+                    @page {{ margin: 0; size: {css_page_size}; }}
                     html, body {{ margin: 0 !important; padding: 0 !important; height: 100%; overflow: hidden; display: block; }}
                     .img-preview {{ 
                         visibility: visible; display: block; position: absolute; left: 0; top: 0; 
@@ -344,11 +364,12 @@ def print_ready(filename, filetype, job_id):
         </head>
         <body>
             <h2 style="margin-bottom: 5px;">Manual Duplex Mode</h2>
+            <p style="color: #a1a1aa; font-size: 12px; margin-top: 0;">Size: {paper_size} | Media: {media_type}</p>
             <img src="/static/{filename}" class="img-preview">
             
             <div id="step1">
                 <p style="color:#60a5fa; font-size: 18px; margin-top: 0;">Step 1: Print the Front Side</p>
-                <button class="btn" onclick="window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
+                <button class="btn" onclick="{media_warning} window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
             </div>
             
             <div id="step2" style="display:none;">
@@ -374,13 +395,14 @@ def print_ready(filename, filetype, job_id):
         </html>
         """
         
+    # ======== IF IT IS A SINGLE-SIDED IMAGE GRID ========
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>Secure Print - Order #{job_id}</title>
         <style>
-            @page {{ margin: 0; }}
+            @page {{ margin: 0; size: {css_page_size}; }}
             html, body {{ 
                 margin: 0 !important; padding: 0 !important; 
                 width: 100%; height: 100%; 
@@ -398,7 +420,10 @@ def print_ready(filename, filetype, job_id):
         <img src="/static/{filename}">
         <script>
             window.onload = () => {{
-                setTimeout(() => {{ window.print(); }}, 500);
+                setTimeout(() => {{ 
+                    {media_warning}
+                    window.print(); 
+                }}, 500);
             }};
             window.addEventListener('afterprint', () => {{
                 if({job_id} !== 0) fetch(`/api/jobs/secure_delete/{job_id}`, {{method: 'POST'}});
