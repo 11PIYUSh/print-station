@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Station Control — Piush Xerox</title>
+    <!-- Dynamic Favicon Injection -->
+    <link rel="icon" id="dynamicFavicon" href="/static/logo.png" type="image/png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -164,7 +167,10 @@
                 if(data.printer_port) document.getElementById('printerPortSelect').value = data.printer_port;
                 document.getElementById('portalUrlInput').value = data.portal_url || window.location.origin;
                 document.getElementById('adminPasswordInput').value = data.admin_password || 'admin';
-                if (data.logo_url) document.getElementById('adminLogo').src = data.logo_url;
+                if (data.logo_url) {
+                    document.getElementById('adminLogo').src = data.logo_url;
+                    document.getElementById('dynamicFavicon').href = data.logo_url; // Dynamic Admin Favicon
+                }
 
                 if (data.rates) {
                     document.getElementById('bwSingleInput').value = data.rates.bw_single;
@@ -190,7 +196,6 @@
             } catch(e) {}
         }
 
-        // SILENT POLLER - Prevents annoying connection popups
         async function pollPrinter(showSuccessAlert = false) {
             document.getElementById('printerStatusLabel').textContent = 'Checking...';
             document.getElementById('printerStatusDot').className = 'h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse';
@@ -340,7 +345,7 @@
 
         async function loadJobs() {
             const res = await fetch('/api/jobs');
-            if (res.status === 401) return; // Ignore if session expired
+            if (res.status === 401) return; 
             const jobs = await res.json();
             const container = document.getElementById('jobsContainer');
 
