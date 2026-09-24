@@ -285,6 +285,7 @@ def test_print_blank():
         filename = f"test_blank_{int(datetime.now().timestamp())}.jpg"
         filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
         blank_im.save(filepath, format='JPEG', quality=85)
+        # 0 is the job ID for tests, which defaults to A4 paper
         return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 200
@@ -304,6 +305,7 @@ def test_print_image():
         filename = f"test_color_{int(datetime.now().timestamp())}.jpg"
         filepath = os.path.join(app.config['STATIC_FOLDER'], filename)
         test_im.save(filepath, format='JPEG', quality=90)
+        # 0 is the job ID for tests, which defaults to A4 paper
         return jsonify({'success': True, 'url': f'/print_ready/{filename}/image/0'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 200
@@ -316,17 +318,42 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= NATIVE ANDROID PRINT BRIDGE =================
+# ================= NATIVE ANDROID PRINT BRIDGE (FINAL SIZE FIX) =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
+    
     print_side = target.get('print_side', 'single')
+    # job_id 0 defaults to an empty target {}, forcing paper_size to explicitly fall back to 'A4'
     paper_size = target.get('paper_size', 'A4')
     media_type = target.get('media_type', 'Plain Paper')
     copies = target.get('copies', 1)
     color_mode = target.get('color_mode', 'color')
 
+    # Convert frontend portal labels to valid CSS dimensions for Android
+    css_sizes = {
+        'A4': 'A4', 
+        'Letter': 'letter', 
+        'Legal': 'legal',
+        '4x6': '4in 6in', 
+        '5x7': '5in 7in', 
+        'A5': 'A5', 
+        'B5': 'B5', 
+        'Card': '2.12in 3.37in'
+    }
+    
+    # This securely locks the paper size so Android cannot default to Index Card
+    css_page_size = css_sizes.get(paper_size, 'A4')
     css_filter = "filter: grayscale(100%) contrast(115%);" if color_mode == 'bw' else ""
+
+    # Alerts to guide the shop owner through manual Android Dialog settings
+    media_warning = ""
+    if media_type != 'Plain Paper':
+        media_warning = f"alert('⚠️ ATTENTION:\\n\\nYou must manually select \\'{media_type}\\' in the Android print drop-down.');"
+
+    copies_warning = ""
+    if copies > 1:
+        copies_warning = f"alert('⚠️ PAID FOR {copies} COPIES!\\n\\nPlease tap the Copies button in the Android print screen and change it to {copies}.');"
 
     # ======== DOCUMENT MODE ========
     if filetype == 'document':
@@ -372,20 +399,21 @@ def print_ready(filename, filetype, job_id):
         """
 
     # ======== IMAGE GRID ========
-    
     duplex_html = ""
     if print_side == 'double':
         duplex_html = f"""
             <div id="step1" class="no-print">
                 <p style="color:#60a5fa; font-size: 18px; margin-top: 0;">Step 1: Print Front Side</p>
-                <button class="btn" onclick="window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front</button>
+                <button class="btn" onclick="{media_warning} {copies_warning} window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
             </div>
             <div id="step2" class="no-print" style="display:none;">
-                <p style="color:#fbbf24; font-size: 22px; font-weight: bold;">⚠️ TURN THE PAGE NOW!</p>
-                <button class="btn btn-green" onclick="window.print(); document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='block';">🖨️ Print Back</button>
+                <p style="color:#fbbf24; font-size: 22px; font-weight: bold; margin-bottom: 5px;">⚠️ TURN THE PAGE NOW!</p>
+                <p style="margin-top: 0; font-size: 16px; color: #a1a1aa;">Take the printed sheet out, flip it over, and re-insert it.</p>
+                <button class="btn btn-green" onclick="window.print(); document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='block';">🖨️ Print Back Side</button>
             </div>
             <div id="step3" class="no-print" style="display:none;">
-                <button class="btn btn-red" onclick="shredAndClose()">🗑️ Complete & Shred</button>
+                <p style="color:#4ade80; font-size: 18px; font-weight: bold;">✅ Printing Complete</p>
+                <button class="btn btn-red" onclick="shredAndClose()">🗑️ Shred Data & Close Tab</button>
             </div>
         """
         
@@ -398,28 +426,24 @@ def print_ready(filename, filetype, job_id):
         <style>
             body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; margin: 0; }}
             .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
-            .btn-green {{ background: #16a34a; }} .btn-red {{ background: #dc2626; }}
-            .banner {{ background: #3f3f46; border: 2px solid #fbbf24; color: #fbbf24; padding: 15px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; font-size: 18px; line-height: 1.5; }}
+            .btn-green {{ background: #16a34a; }}
+            .btn-red {{ background: #dc2626; }}
+            .banner {{ background: #3f3f46; border: 2px solid #fbbf24; color: #fbbf24; padding: 10px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; font-size: 20px; }}
             .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 0 auto; display: block; }}
             
-            /* EXTREMELY STRICT CSS TO PREVENT 'PREPARING PREVIEW' FREEZE */
             @media print {{
-                @page {{ margin: 0; }}
-                html, body {{ margin: 0; padding: 0; height: 100%; width: 100%; background: #fff; }}
+                /* STRICT OVERRIDE: Forces Android to use customer selection (or A4 for tests) */
+                @page {{ margin: 0; size: {css_page_size}; }}
+                html, body {{ margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; display: block; overflow: hidden; }}
                 .no-print {{ display: none !important; }}
                 .img-preview {{ 
-                    width: 100%; height: 100%; display: block; margin: 0; padding: 0; border: none; object-fit: contain; page-break-inside: avoid;
+                    width: 100%; height: 100%; display: block; margin: 0; padding: 0; border: none; object-fit: contain; max-width: none; max-height: none; page-break-inside: avoid;
                 }}
             }}
         </style>
     </head>
     <body>
-        <div class="no-print banner">
-            🛑 MATCH THESE EXACT SETTINGS IN THE ANDROID PRINT MENU 🛑<br>
-            <span style="color: #60a5fa;">Copies:</span> {copies} &nbsp;|&nbsp; 
-            <span style="color: #60a5fa;">Paper Size:</span> {paper_size} &nbsp;|&nbsp; 
-            <span style="color: #60a5fa;">Media:</span> {media_type}
-        </div>
+        <div class="no-print banner">⚠️ SET COPIES TO: {copies} ⚠️</div>
         
         <img src="/static/{filename}" class="img-preview" id="targetImg" style="{css_filter}">
         
@@ -435,9 +459,12 @@ def print_ready(filename, filetype, job_id):
                 // Safely waits for image decoding in RAM before opening print dialog
                 const img = document.getElementById('targetImg');
                 img.decode().then(() => {{
-                    setTimeout(() => {{ window.print(); }}, 300);
+                    setTimeout(() => {{ 
+                        {media_warning}
+                        {copies_warning}
+                        window.print(); 
+                    }}, 400);
                 }}).catch(() => {{
-                    // Fallback if decode() is unsupported
                     setTimeout(() => {{ window.print(); }}, 800);
                 }});
 
