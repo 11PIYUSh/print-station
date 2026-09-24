@@ -3,7 +3,7 @@ import re
 import json
 import socket
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for, render_template_string
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageOps, ImageDraw
 
@@ -30,6 +30,45 @@ DEFAULT_CONFIG = {
     'layout_rates': {'1_photo': 0.0, '1_full': 0.0, '2_tb': 2.0, '2_lr': 2.0, '4_grid': 4.0, 'passport': 10.0, 'custom': 5.0},
     'media_rates': {'Plain Paper': 0.0, 'Photo Paper Plus Glossy II': 10.0, 'Matte Photo Paper': 10.0}
 }
+
+# Embedded Login HTML to prevent 500 TemplateNotFound errors
+LOGIN_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login — Piush Xerox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-[#09090B] text-zinc-100 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+        <div class="text-center mb-6">
+            <h1 class="text-xl font-extrabold text-white">Admin Station</h1>
+            <p class="text-xs text-zinc-400 mt-1">Enter password to access control panel</p>
+        </div>
+        
+        {% if error %}
+        <div class="bg-rose-950/50 border border-rose-900 text-rose-400 text-xs text-center p-2 rounded-lg mb-4 font-bold">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST" action="/login" class="space-y-4">
+            <div>
+                <input type="password" name="password" required placeholder="Enter Password" 
+                       class="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-center text-white font-bold tracking-widest outline-none focus:border-blue-500 transition">
+            </div>
+            <button type="submit" class="w-full py-3 bg-[#2563EB] hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg transition">
+                Unlock System
+            </button>
+        </form>
+    </div>
+</body>
+</html>
+"""
 
 def load_settings():
     if not os.path.exists(CONFIG_FILE):
@@ -89,7 +128,7 @@ def build_print_sheet(job):
     filenames = job.get('filenames', [])
     if not filenames: return None, None
 
-    # STRICT DEFAULT A4: Prevents the Index Card crash entirely.
+    # STRICT DEFAULT A4: Prevents Android Index Card crashes.
     canvas_w, canvas_h = (2480, 3508) # Exact A4 dimensions at 300 DPI
     canvas = Image.new('RGB', (canvas_w, canvas_h), color=(255, 255, 255))
     
@@ -154,13 +193,11 @@ def build_print_sheet(job):
             y = margin + r * (cell_h + scaled_gap)
             canvas.paste(cell_img, (x, y))
 
-    # MASSIVE FIX: We now save the image grid directly as a PDF! 
-    # This prevents all Samsung/Android WebView print spooler crashes.
+    # Converts grid directly to PDF to fix Samsung & Vivo memory crashes entirely.
     out_name = f"compiled_job_{job['id']}.pdf"
     out_path = os.path.join(app.config['STATIC_FOLDER'], out_name)
     canvas.save(out_path, "PDF", resolution=300)
     
-    # We return 'pdf' so the system handles it as a flawless document
     return out_name, 'pdf'
 
 def secure_shred(job):
@@ -183,14 +220,15 @@ def admin_portal():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
+    error = None
     if request.method == 'POST':
         pwd = request.form.get('password')
         if pwd == SETTINGS.get('admin_password', 'admin'):
             session['admin_logged_in'] = True
             return redirect(url_for('admin_portal'))
         else:
-            return render_template('login.html', error="Invalid Password")
-    return render_template('login.html')
+            error = "Invalid Password"
+    return render_template_string(LOGIN_TEMPLATE, error=error)
 
 @app.route('/logout')
 def logout():
@@ -348,7 +386,6 @@ def manual_secure_delete(job_id):
     return jsonify({'success': True})
 
 # ================= CRASH-FREE PDF PRINT BRIDGE =================
-# Since everything is converted to PDF now, the bridge is flawlessly stable.
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     if not session.get('admin_logged_in'): return redirect(url_for('login_page'))
@@ -356,9 +393,6 @@ def print_ready(filename, filetype, job_id):
     print_side = target.get('print_side', 'single')
     copies = target.get('copies', 1)
     
-    # We now serve the generated PDF grid OR the raw uploaded document PDFs
-    file_path = f"/static/{filename}" if job_id == 0 or target.get('job_mode', 'image') == 'image' else f"/uploads/{filename}"
-
     if filetype in ['pdf', 'document']:
         filenames = target.get('filenames', []) if filetype == 'document' else [filename]
         
