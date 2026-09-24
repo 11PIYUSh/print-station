@@ -128,7 +128,13 @@ def build_print_sheet(job):
             path = os.path.join(app.config['UPLOAD_FOLDER'], fn)
             img = Image.open(path)
             img = ImageOps.exif_transpose(img)
-            img = img.convert('RGB')
+            
+            # Python-level B&W Conversion (Fixes Samsung Memory Crash)
+            if job.get('color_mode') == 'bw': 
+                img = img.convert('L').convert('RGB')
+            else: 
+                img = img.convert('RGB')
+                
             if rotation != 0: img = img.rotate(-rotation, expand=True, fillcolor=(255, 255, 255))
             images.append(img)
         except Exception: pass
@@ -316,7 +322,7 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= NATIVE ANDROID PRINT BRIDGE =================
+# ================= UNIVERSAL ANDROID PRINT BRIDGE =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
@@ -325,9 +331,6 @@ def print_ready(filename, filetype, job_id):
     paper_size = target.get('paper_size', 'A4')
     media_type = target.get('media_type', 'Plain Paper')
     copies = target.get('copies', 1)
-    color_mode = target.get('color_mode', 'color')
-
-    css_filter = "filter: grayscale(100%) contrast(115%);" if color_mode == 'bw' else ""
 
     media_warning = ""
     if media_type != 'Plain Paper':
@@ -414,12 +417,12 @@ def print_ready(filename, filetype, job_id):
             .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 0 auto; display: block; }}
             
             @media print {{
-                /* COMPLETELY REMOVED @page SIZE OVERRIDE TO PREVENT CRASH ON ALL PHONES */
+                /* SAMSUNG OOM FIX: Removed all problematic height properties */
                 @page {{ margin: 0; }}
-                html, body {{ margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; display: block; overflow: hidden; }}
+                html, body {{ margin: 0; padding: 0; background: #fff; display: block; }}
                 .no-print {{ display: none !important; }}
                 .img-preview {{ 
-                    width: 100%; height: 100%; display: block; margin: 0; padding: 0; border: none; object-fit: contain; max-width: none; max-height: none; page-break-inside: avoid;
+                    display: block; max-width: 100%; margin: 0 auto; padding: 0; border: none; page-break-inside: avoid;
                 }}
             }}
         </style>
@@ -427,7 +430,7 @@ def print_ready(filename, filetype, job_id):
     <body>
         <div class="no-print banner">⚠️ SET COPIES TO: {copies} ⚠️</div>
         
-        <img src="/static/{filename}" class="img-preview" id="targetImg" style="{css_filter}">
+        <img src="/static/{filename}" class="img-preview" id="targetImg">
         
         {duplex_html}
         
