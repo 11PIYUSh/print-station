@@ -128,9 +128,8 @@ def build_print_sheet(job):
             path = os.path.join(app.config['UPLOAD_FOLDER'], fn)
             img = Image.open(path)
             img = ImageOps.exif_transpose(img)
-            # Apply B&W here natively to save spooler RAM
-            if job.get('color_mode') == 'bw': img = img.convert('L').convert('RGB')
-            else: img = img.convert('RGB')
+            # DO NOT CONVERT TO B&W HERE - Saves processing time and memory
+            img = img.convert('RGB')
             if rotation != 0: img = img.rotate(-rotation, expand=True, fillcolor=(255, 255, 255))
             images.append(img)
         except Exception: pass
@@ -159,7 +158,8 @@ def build_print_sheet(job):
 
     out_name = f"compiled_job_{job['id']}.jpg"
     out_path = os.path.join(app.config['STATIC_FOLDER'], out_name)
-    canvas.save(out_path, format='JPEG', quality=85, optimize=True) # Optimized quality to prevent hangs
+    # Locked at 85 quality to prevent Android spooler Out-Of-Memory crashes
+    canvas.save(out_path, format='JPEG', quality=85, optimize=True)
     return out_name, 'image'
 
 def secure_shred(job):
@@ -318,7 +318,8 @@ def manual_secure_delete(job_id):
         target['print_status'] = 'Securely Erased'
     return jsonify({'success': True})
 
-# ================= NATIVE ANDROID PRINT BRIDGE (CRASH FIX) =================
+
+# ================= NATIVE ANDROID PRINT BRIDGE (CRASH-FREE VERSION) =================
 @app.route('/print_ready/<filename>/<filetype>/<int:job_id>')
 def print_ready(filename, filetype, job_id):
     target = next((j for j in PRINT_JOBS if j['id'] == job_id), {})
@@ -326,6 +327,7 @@ def print_ready(filename, filetype, job_id):
     paper_size = target.get('paper_size', 'A4')
     media_type = target.get('media_type', 'Plain Paper')
     copies = target.get('copies', 1)
+    color_mode = target.get('color_mode', 'color')
 
     css_sizes = {
         'A4': 'A4', 'Letter': 'letter', 'Legal': 'legal',
@@ -333,9 +335,17 @@ def print_ready(filename, filetype, job_id):
     }
     css_page_size = css_sizes.get(paper_size, 'A4')
 
+    # Force Grayscale using CSS to guarantee B&W printing natively
+    css_filter = "filter: grayscale(100%) contrast(115%);" if color_mode == 'bw' else ""
+
+    # Alerts to guide the shop owner through manual Android Dialog settings
     media_warning = ""
     if media_type != 'Plain Paper':
-        media_warning = f"alert('⚠️ Media Type Alert:\\nSelect \\'{media_type}\\' in the print dialog.');"
+        media_warning = f"alert('⚠️ ATTENTION:\\n\\nYou must manually select \\'{media_type}\\' in the Android print drop-down.');"
+
+    copies_warning = ""
+    if copies > 1:
+        copies_warning = f"alert('⚠️ PAID FOR {copies} COPIES!\\n\\nPlease tap the Copies button in the Android print screen and change it to {copies}.');"
 
     # ======== DOCUMENT MODE ========
     if filetype == 'document':
@@ -345,50 +355,58 @@ def print_ready(filename, filetype, job_id):
             return f"""
             <script>
                 if ("{print_side}" === "double") {{
-                    alert(`MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages'.\\n2. Turn pages and re-insert.\\n3. Choose 'Print Even Pages'.`);
+                    alert(`MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages' in the dialog.\\n2. Turn the pages and place them back in the tray.\\n3. Choose 'Print Even Pages'.`);
                 }}
                 window.location.href="/uploads/{fn}";
             </script>
             """
+        
         links = ""
         for i, fn in enumerate(filenames):
             alert_script = ""
             if print_side == 'double':
-                alert_script = "alert(`MANUAL DUPLEX:\\n1. Print Odd Pages.\\n2. Turn pages.\\n3. Print Even Pages.`);"
-            links += f'<button class="btn" onclick="{alert_script} window.open(\'/uploads/{fn}\', \'_blank\')">📄 Open File {i+1}</button><br>'
+                alert_script = "alert(`MANUAL DUPLEX PRINTING:\\n1. Choose 'Print Odd Pages'.\\n2. Turn pages and re-insert.\\n3. Choose 'Print Even Pages'.`);"
+            links += f'<button class="btn" onclick="{alert_script} window.open(\'/uploads/{fn}\', \'_blank\')">📄 Open & Print File {i+1}</button><br>'
             
         return f"""
-        <!DOCTYPE html><html><head><title>Docs - #{job_id}</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; }}
-            .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 16px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
-            .btn-red {{ background: #dc2626; margin-top: 20px; }}
-        </style></head><body>
-            <h2 style="color: #60a5fa;">Multiple Documents</h2>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Multiple Documents - Order #{job_id}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; }}
+                .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 16px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
+                .btn-red {{ background: #dc2626; margin-top: 20px; }}
+            </style>
+        </head>
+        <body>
+            <h2 style="color: #60a5fa;">Multiple Documents Detected</h2>
+            <p style="color: #a1a1aa; margin-bottom: 30px;">Please click and print each file below.</p>
             {links}
             <hr style="border-color:#333; margin: 30px 0;">
-            <button class="btn btn-red" onclick="fetch('/api/jobs/secure_delete/{job_id}', {{method: 'POST'}}); window.close();">🗑️ Shred & Close</button>
-        </body></html>
+            <button class="btn btn-red" onclick="fetch('/api/jobs/secure_delete/{job_id}', {{method: 'POST'}}); window.close();">🗑️ Shred Data & Close Hub</button>
+        </body>
+        </html>
         """
 
-    # ======== IMAGE GRID (Crash Fixed) ========
-    # Removed multi-image injection to save spooler RAM. 
-    # CSS completely simplified to prevent "Preparing preview" layout loops.
+    # ======== IMAGE GRID (Completely stripped CSS to prevent Spooler Crash) ========
     
     duplex_html = ""
     if print_side == 'double':
         duplex_html = f"""
             <div id="step1" class="no-print">
-                <p style="color:#60a5fa; font-size: 18px; margin-top: 0;">Step 1: Print Front Side</p>
-                <button class="btn" onclick="{media_warning} window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front</button>
+                <p style="color:#60a5fa; font-size: 18px; margin-top: 0;">Step 1: Print the Front Side</p>
+                <button class="btn" onclick="{media_warning} {copies_warning} window.print(); document.getElementById('step1').style.display='none'; document.getElementById('step2').style.display='block';">🖨️ Print Front Side</button>
             </div>
             <div id="step2" class="no-print" style="display:none;">
-                <p style="color:#fbbf24; font-size: 22px; font-weight: bold;">⚠️ TURN THE PAGE NOW!</p>
-                <button class="btn btn-green" onclick="window.print(); document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='block';">🖨️ Print Back</button>
+                <p style="color:#fbbf24; font-size: 22px; font-weight: bold; margin-bottom: 5px;">⚠️ TURN THE PAGE NOW!</p>
+                <p style="margin-top: 0; font-size: 16px; color: #a1a1aa;">Take the printed sheet out, flip it over, and re-insert it.</p>
+                <button class="btn btn-green" onclick="window.print(); document.getElementById('step2').style.display='none'; document.getElementById('step3').style.display='block';">🖨️ Print Back Side</button>
             </div>
             <div id="step3" class="no-print" style="display:none;">
-                <button class="btn btn-red" onclick="shredAndClose()">🗑️ Complete & Shred</button>
+                <p style="color:#4ade80; font-size: 18px; font-weight: bold;">✅ Printing Complete</p>
+                <button class="btn btn-red" onclick="shredAndClose()">🗑️ Shred Data & Close Tab</button>
             </div>
         """
         
@@ -396,28 +414,32 @@ def print_ready(filename, filetype, job_id):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Print - #{job_id}</title>
+        <title>Secure Print - Order #{job_id}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             body {{ font-family: sans-serif; text-align: center; background: #09090b; color: white; padding: 20px; margin: 0; }}
-            .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; }}
-            .btn-green {{ background: #16a34a; }} .btn-red {{ background: #dc2626; }}
-            .banner {{ background: #3f3f46; border: 2px solid #fbbf24; color: #fbbf24; padding: 10px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; }}
+            .btn {{ display: inline-block; padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold; color: white; background: #2563eb; border: none; border-radius: 10px; cursor: pointer; }}
+            .btn-green {{ background: #16a34a; }}
+            .btn-red {{ background: #dc2626; }}
+            .banner {{ background: #3f3f46; border: 2px solid #fbbf24; color: #fbbf24; padding: 10px; font-weight: bold; border-radius: 8px; margin-bottom: 20px; font-size: 20px; }}
             .img-preview {{ max-width: 90%; max-height: 45vh; border: 2px solid #333; margin: 0 auto; display: block; }}
             
+            /* EXTREMELY STRICT ANDROID PRINT CSS - REMOVING ALL COMPLICATED LAYOUT TRIGGERS */
             @media print {{
                 @page {{ margin: 0; size: {css_page_size}; }}
-                html, body {{ margin: 0; padding: 0; background: #fff; }}
+                html, body {{ margin: 0; padding: 0; background: #fff; width: 100%; height: 100%; display: block; }}
                 .no-print {{ display: none !important; }}
                 .img-preview {{ 
-                    width: 100%; display: block; margin: 0; padding: 0; border: none; max-height: none; max-width: none; page-break-inside: avoid;
+                    width: 100%; height: 100%; display: block; margin: 0; padding: 0; border: none; object-fit: contain; max-width: none; max-height: none; page-break-inside: avoid;
                 }}
             }}
         </style>
     </head>
     <body>
         <div class="no-print banner">⚠️ SET COPIES TO: {copies} ⚠️</div>
-        <img src="/static/{filename}" class="img-preview" onload="imageLoaded()">
+        
+        <!-- We only load ONE image now. Loading multiple crashes the Android memory. -->
+        <img src="/static/{filename}" class="img-preview" id="targetImg" style="{css_filter}">
         
         {duplex_html}
         
@@ -427,16 +449,16 @@ def print_ready(filename, filetype, job_id):
                 window.close();
             }}
 
-            function imageLoaded() {{
-                if ("{print_side}" !== "double") {{
+            if ("{print_side}" !== "double") {{
+                // Triggers print ONLY after the image is fully locked into memory, eliminating the crash
+                document.getElementById('targetImg').onload = function() {{
                     setTimeout(() => {{ 
                         {media_warning}
+                        {copies_warning}
                         window.print(); 
-                    }}, 300);
-                }}
-            }}
+                    }}, 400);
+                }};
 
-            if ("{print_side}" !== "double") {{
                 window.addEventListener('afterprint', () => {{ shredAndClose(); }});
             }}
         </script>
